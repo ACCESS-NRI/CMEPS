@@ -50,6 +50,7 @@ module MED
   use esmFldsExchange_ufs_mod  , only : esmFldsExchange_ufs
   use esmFldsExchange_cesm_mod , only : esmFldsExchange_cesm
   use esmFldsExchange_hafs_mod , only : esmFldsExchange_hafs
+  use esmFldsExchange_access_mod , only : esmFldsExchange_access
   use med_phases_profile_mod   , only : med_phases_profile_finalize
   use shr_log_mod              , only : shr_log_error
   
@@ -839,6 +840,9 @@ contains
     else if (coupling_mode(1:4) == 'hafs') then
        call esmFldsExchange_hafs(gcomp, phase='advertise', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+     else if (trim(coupling_mode(1:4)) == 'access') then
+          call esmFldsExchange_access(gcomp, phase='advertise', rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
     else
        call shr_log_error(trim(coupling_mode)//' is not a valid coupling_mode', rc=rc)
        return
@@ -1844,6 +1848,9 @@ contains
       else if (coupling_mode(1:4) == 'hafs') then
          call esmFldsExchange_hafs(gcomp, phase='initialize', rc=rc)
          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+     else if (trim(coupling_mode) == 'access') then
+          call esmFldsExchange_access(gcomp, phase='initialize', rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
       end if
 
       if (maintask) then
