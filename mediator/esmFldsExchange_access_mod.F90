@@ -142,8 +142,22 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       ! to atm: from ice
       ! ---------------------------------------------------------------------
-      call addfld(fldListFr(compice)%flds, 'Si_t')
-      call addfld(fldListTo(compatm)%flds, 'Si_t')
+      allocate(S_flds(8))
+      S_flds = (/'Si_t', &
+                  'ia_aicen', &
+                  'ia_snown', &
+                  'ia_thikn', &
+                  'ia_itopt', &
+                  'ia_itopk', &
+                  'ia_pndfn', &
+                  'ia_pndtn', &
+               /) ! sea_surface_temperature
+      do n = 1,size(S_flds)
+        fldname = trim(S_flds(n))
+        call addfld(fldListFr(compice)%flds, trim(fldname))
+        call addfld(fldListTo(compatm)%flds, trim(fldname))
+      end do
+      deallocate(S_flds)
 
       !=====================================================================
       ! FIELDS TO OCEAN (compocn)
@@ -370,8 +384,24 @@ module esmFldsExchange_access_mod
       call addmap(fldListFr(compocn)%flds, 'So_t', compatm, mapconsf, 'ofrac', 'unset')
       call addmrg(fldListTo(compatm)%flds, 'So_t', mrg_from=compocn, mrg_fld='So_t', mrg_type='copy')
 
-      call addmap(fldListFr(compice)%flds, 'Si_t', compatm, mapconsf, 'ifrac', 'unset')
-      call addmrg(fldListTo(compatm)%flds, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
+      allocate(S_flds(8))
+      S_flds = (/'Si_t', &
+                  'ia_aicen', &
+                  'ia_snown', &
+                  'ia_thikn', &
+                  'ia_itopt', &
+                  'ia_itopk', &
+                  'ia_pndfn', &
+                  'ia_pndtn', &
+               /) ! sea_surface_temperature
+      do n = 1,size(S_flds)
+        fldname = trim(S_flds(n))
+        call addmap(fldListFr(compice)%flds, trim(fldname), compatm, mapconsf, 'ifrac', 'unset')
+        call addmrg(fldListTo(compatm)%flds, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
+      end do
+      deallocate(S_flds)
+      ! call addmap(fldListFr(compice)%flds, 'Si_t', compatm, mapconsf, 'ifrac', 'unset')
+      ! call addmrg(fldListTo(compatm)%flds, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
 
       !=====================================================================
       ! FIELDS TO OCEAN (compocn)
