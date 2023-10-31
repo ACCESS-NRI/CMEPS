@@ -151,8 +151,7 @@ module esmFldsExchange_access_mod
                   'ia_itopt', &
                   'ia_itopk', &
                   'ia_pndfn', &
-                  'ia_pndtn', &
-               /) ! sea_surface_temperature
+                  'ia_pndtn'/) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld(fldListFr(compice)%flds, trim(fldname))
@@ -390,8 +389,7 @@ module esmFldsExchange_access_mod
                   'ia_itopt', &
                   'ia_itopk', &
                   'ia_pndfn', &
-                  'ia_pndtn', &
-               /) ! sea_surface_temperature
+                  'ia_pndtn'/) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addmap(fldListFr(compice)%flds, trim(fldname), compatm, mapconsf, 'ifrac', 'unset')
