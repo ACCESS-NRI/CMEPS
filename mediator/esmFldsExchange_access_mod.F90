@@ -154,8 +154,8 @@ module esmFldsExchange_access_mod
                   'ia_pndtn'/) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
-        call addfld(fldListFr(compice)%flds, trim(fldname))
-        call addfld(fldListTo(compatm)%flds, trim(fldname))
+        call addfld_from(compice, trim(fldname))
+        call addfld_to(compatm, trim(fldname))
       end do
       deallocate(S_flds)
 
@@ -392,8 +392,8 @@ module esmFldsExchange_access_mod
                   'ia_pndtn'/) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
-        call addmap(fldListFr(compice)%flds, trim(fldname), compatm, mapconsf, 'ifrac', 'unset')
-        call addmrg(fldListTo(compatm)%flds, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
+        call addmap_from(compice, trim(fldname), compatm, mapconsf, 'ifrac', 'unset')
+        call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
       end do
       deallocate(S_flds)
       ! call addmap(fldListFr(compice)%flds, 'Si_t', compatm, mapconsf, 'ifrac', 'unset')
