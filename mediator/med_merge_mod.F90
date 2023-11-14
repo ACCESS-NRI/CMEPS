@@ -334,6 +334,8 @@ contains
     real(R8), pointer :: dpf2(:,:)  ! intput pointers to 1d and 2d fields
     real(R8), pointer :: dpw1(:)    ! weight pointer
     character(len=*),parameter :: subname=' (med_merge_mod: med_merge_auto_field)'
+    character(len=CL) :: tmpString
+    integer           :: ungriddedUbound_out1(1)
     !---------------------------------------
 
     rc = ESMF_SUCCESS
@@ -367,6 +369,19 @@ contains
 
     ! Get field pointer to output and input fields
     ! Assume that input and output ungridded upper bounds are the same - this is checked in error check
+
+    ! field_in
+    ! field_out
+
+    call ESMF_FieldGet(field_in, ungriddedUBound=ungriddedUbound_out1, rc=rc)
+    write (tmpString, *) ungriddedUbound_out1(1)
+    call ESMF_LogWrite('Input ungridded ubound: ' // trim(tmpString), ESMF_LogMsg_Info, rc=rc)
+    
+    call ESMF_FieldGet(field_out, ungriddedUBound=ungriddedUbound_out1, rc=rc)
+    write (tmpString, *) ungriddedUbound_out1(1)
+    call ESMF_LogWrite('Output ungridded ubound: ' // trim(tmpString), ESMF_LogMsg_Info, rc=rc)
+    
+
 
     if (ungriddedUBound_out(1) > 0) then
        call ESMF_FieldGet(field_in, farrayPtr=dpf2, rc=rc)
