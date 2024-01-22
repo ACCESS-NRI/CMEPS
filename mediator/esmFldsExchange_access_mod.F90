@@ -549,12 +549,19 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(F_flds(5, 2))
+      allocate(F_flds(12, 2))
       F_flds(1,:) = (/'Faxa_swvdr ', 'Faxa_swvdr '/)
       F_flds(2,:) = (/'Faxa_swndr ', 'Faxa_swndr '/)
       F_flds(3,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
       F_flds(4,:) = (/'Faxa_swndf', 'Faxa_swndf'/)
       F_flds(5,:) = (/'Faxa_lwdn', 'Faxa_lwdn'/)
+      F_flds(6,:) = (/'pen_rad', 'pen_rad'/)
+      F_flds(7,:) = (/'topmelt', 'topmelt'/)
+      F_flds(8,:) = (/'botmelt', 'botmelt'/)
+      F_flds(9,:) = (/'tstar_sice', 'tstar_sice'/)
+      F_flds(10,:) = (/'sublim', 'sublim'/)
+      F_flds(11,:) = (/'Foxx_sen', 'Foxx_sen'/)
+      F_flds(12,:) = (/'Faxa_swdn', 'Faxa_swdn'/)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
