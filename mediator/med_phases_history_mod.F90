@@ -1300,7 +1300,7 @@ contains
              call med_io_write(auxcomp%files(nf)%io_file, is_local%wrap%FBimp(compid,compid), &
                   whead(1), wdata(1), nx, ny, nt=auxcomp%files(nf)%nt, &
                   pre=trim(compname(compid))//'Imp', flds=auxcomp%files(nf)%flds, &
-                  use_float=.true., rc=rc)
+                  use_float=.false., rc=rc)
              if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
              ! end definition phase
