@@ -392,9 +392,11 @@ module esmFldsExchange_access_mod
       call addmap_from(compocn, 'So_t', compatm, mapconsf, 'ofrac', 'unset')
       call addmrg_to(compatm, 'So_t', mrg_from=compocn, mrg_fld='So_t', mrg_type='copy')
 
-      allocate(S_flds(8))
-      S_flds = (/'Si_t', &
-                  'ia_aicen', &
+      call addmap_from(compice, 'Si_t', compatm, mapconsd, 'ifrac', 'unset')
+      call addmrg_to(compatm, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
+      
+      allocate(S_flds(7))
+      S_flds = (/'ia_aicen', &
                   'ia_snown', &
                   'ia_thikn', &
                   'ia_itopt', &
@@ -403,7 +405,7 @@ module esmFldsExchange_access_mod
                   'ia_pndtn'/) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
-        call addmap_from(compice, trim(fldname), compatm, mapconsf, 'ifrac', 'unset')
+        call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
         call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
       end do
       deallocate(S_flds)
@@ -438,7 +440,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(F_flds(11, 2))
+      allocate(F_flds(9, 2))
       F_flds(1,:) = (/'Foxx_sen', 'Foxx_sen'/)
       F_flds(2,:) = (/'Foxx_evap', 'Foxx_evap'/)
       F_flds(3,:) = (/'Foxx_lwnet', 'Foxx_lwnet'/)
@@ -462,7 +464,7 @@ module esmFldsExchange_access_mod
       deallocate(F_flds)
 
       ! precip
-      call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset')
+      call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset') ! TODO: weight by ocean fraction
       call addmrg_to(compocn, 'Faxa_rain', mrg_from=compatm, mrg_fld='Faxa_rainc', mrg_type='sum')
       call addmap_from(compatm, 'Faxa_rainl', compocn, mapconsf, 'one', 'unset')
       call addmrg_to(compocn, 'Faxa_rain', mrg_from=compatm, mrg_fld='Faxa_rainl', mrg_type='sum')
@@ -471,13 +473,15 @@ module esmFldsExchange_access_mod
       call addmrg_to(compocn, 'Faxa_snow', mrg_from=compatm, mrg_fld='Faxa_snowc', mrg_type='sum')
       call addmap_from(compatm, 'Faxa_snowl', compocn, mapconsf, 'one', 'unset')
       call addmrg_to(compocn, 'Faxa_snow', mrg_from=compatm, mrg_fld='Faxa_snowl', mrg_type='sum')
-
+      
       ! from ice
-      allocate(F_flds(4, 2))
+      call addmap_from(compice, 'Si_ifrac', compocn, mapfcopy, 'unset', 'unset')
+      call addmrg_to(compocn, 'Si_ifrac', mrg_from=compice, mrg_fld='Si_ifrac', mrg_type='copy')
+
+      allocate(F_flds(3, 2))
       F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
-      F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
-      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
-      F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
+      F_flds(2,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
+      F_flds(3,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
@@ -485,7 +489,7 @@ module esmFldsExchange_access_mod
              fldchk(is_local%wrap%FBImp(compice, compice), trim(fldname1),rc=rc) &
             ) then
             call addmap_from(compice, trim(fldname1), compocn, mapfcopy, 'unset', 'unset')
-            call addmrg_to(compocn, trim(fldname2), mrg_from=compice, mrg_fld=trim(fldname1), mrg_type='copy')
+            call addmrg_to(compocn, trim(fldname2), mrg_from=compice, mrg_fld=trim(fldname1), mrg_type='copy_with_weights', mrg_fracname='ifrac')
          end if
       end do
       deallocate(F_flds)
@@ -534,7 +538,7 @@ module esmFldsExchange_access_mod
       deallocate(S_flds)
 
       ! from ocn
-      allocate(S_flds(6))
+      allocate(S_flds(7))
       S_flds = (/'So_dhdx', & ! inst_zonal_wind_height10m
                  'So_dhdy', & ! inst_merid_wind_height10m
                  'So_t ', & ! inst_temp_height2m
@@ -561,16 +565,16 @@ module esmFldsExchange_access_mod
 
       ! from atm
       allocate(F_flds(12, 2))
-      F_flds(1,:) = (/'Faxa_swvdr ', 'Faxa_swvdr '/)
-      F_flds(2,:) = (/'Faxa_swndr ', 'Faxa_swndr '/)
-      F_flds(3,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
-      F_flds(4,:) = (/'Faxa_swndf', 'Faxa_swndf'/)
-      F_flds(5,:) = (/'Faxa_lwdn', 'Faxa_lwdn'/)
-      F_flds(6,:) = (/'pen_rad', 'pen_rad'/)
-      F_flds(7,:) = (/'topmelt', 'topmelt'/)
-      F_flds(8,:) = (/'botmelt', 'botmelt'/)
-      F_flds(9,:) = (/'tstar_sice', 'tstar_sice'/)
-      F_flds(10,:) = (/'sublim', 'sublim'/)
+      F_flds(1,:) = (/'pen_rad', 'pen_rad'/)
+      F_flds(2,:) = (/'topmelt', 'topmelt'/)
+      F_flds(3,:) = (/'botmelt', 'botmelt'/)
+      F_flds(4,:) = (/'tstar_sice', 'tstar_sice'/)
+      F_flds(5,:) = (/'sublim', 'sublim'/)
+      F_flds(6,:) = (/'Faxa_swvdr ', 'Faxa_swvdr '/)
+      F_flds(7,:) = (/'Faxa_swndr ', 'Faxa_swndr '/)
+      F_flds(8,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
+      F_flds(9,:) = (/'Faxa_swndf', 'Faxa_swndf'/)
+      F_flds(10,:) = (/'Faxa_lwdn', 'Faxa_lwdn'/)
       F_flds(11,:) = (/'Foxx_sen', 'Foxx_sen'/)
       F_flds(12,:) = (/'Faxa_swdn', 'Faxa_swdn'/)
 
@@ -581,7 +585,7 @@ module esmFldsExchange_access_mod
              fldchk(is_local%wrap%FBImp(compatm, compatm), trim(fldname1), rc=rc) &
             ) then
 
-            call addmap_from(compatm, trim(fldname1), compice, mapconsf, 'one', 'unset')
+            call addmap_from(compatm, trim(fldname1), compice, mapconsf, 'one', 'unset') ! mapping with total ifrac, should use category fractions
             call addmrg_to(compice, trim(fldname2), mrg_from=compatm, mrg_fld=trim(fldname1), mrg_type='copy')
 
          end if
