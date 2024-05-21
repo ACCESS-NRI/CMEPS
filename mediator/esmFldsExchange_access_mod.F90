@@ -489,7 +489,7 @@ module esmFldsExchange_access_mod
              fldchk(is_local%wrap%FBImp(compice, compice), trim(fldname1),rc=rc) &
             ) then
             call addmap_from(compice, trim(fldname1), compocn, mapfcopy, 'unset', 'unset')
-            call addmrg_to(compocn, trim(fldname2), mrg_from=compice, mrg_fld=trim(fldname1), mrg_type='copy_with_weights', mrg_fracname='ifrac')
+            call addmrg_to(compocn, trim(fldname2), mrg_from=compice, mrg_fld=trim(fldname1), mrg_type='copy')
          end if
       end do
       deallocate(F_flds)
