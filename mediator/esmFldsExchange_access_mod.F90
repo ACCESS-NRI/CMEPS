@@ -143,7 +143,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       ! to atm: from ice
       ! ---------------------------------------------------------------------
-      allocate(S_flds(8))
+      allocate(S_flds(9))
       S_flds = (/'Si_t', &
                   'ia_aicen', &
                   'ia_snown', &
@@ -151,7 +151,9 @@ module esmFldsExchange_access_mod
                   'ia_itopt', &
                   'ia_itopk', &
                   'ia_pndfn', &
-                  'ia_pndtn'/) ! sea_surface_temperature
+                  'ia_pndtn', &
+                  'sstfrz' &
+               /) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld_from(compice, trim(fldname))
@@ -232,7 +234,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(S_flds(2))
+      allocate(S_flds(10))
       S_flds = (/'Sa_z', &
                   'Sa_u', &
                   'Sa_v', &
@@ -240,7 +242,9 @@ module esmFldsExchange_access_mod
                   'Sa_tbot', &
                   'Sa_pbot', &
                   'Sa_dens', &
-                  'Sa_ptem'/)
+                  'Sa_ptem', &
+                  'um_icesth', &
+                  'um_icenth' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -394,6 +398,9 @@ module esmFldsExchange_access_mod
 
       call addmap_from(compice, 'Si_t', compatm, mapconsd, 'ifrac', 'unset')
       call addmrg_to(compatm, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
+
+      call addmap_from(compice, 'sstfrz', compatm, mapconsf, 'none', 'unset')
+      call addmrg_to(compatm, 'sstfrz', mrg_from=compice, mrg_fld='sstfrz', mrg_type='copy')
       
       allocate(S_flds(7))
       S_flds = (/'ia_aicen', &
@@ -514,15 +521,17 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(S_flds(8))
-      S_flds = (/'Sa_z', & ! inst_zonal_wind_height10m
-                  'Sa_u', & ! inst_merid_wind_height10m
-                  'Sa_v ', & ! inst_temp_height2m
-                  'Sa_shum ', & ! inst_spec_humid_height2m
-                  'Sa_tbot', & ! Sa_pslv
+      allocate(S_flds(10))
+      S_flds = (/'Sa_z', &
+                  'Sa_u', &
+                  'Sa_v', &
+                  'Sa_shum', &
+                  'Sa_tbot', &
                   'Sa_pbot', &
                   'Sa_dens', &
-                  'Sa_ptem' /) ! inst_temp_height_surface
+                  'Sa_ptem', &
+                  'um_icesth', &
+                  'um_icenth' /)
 
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
