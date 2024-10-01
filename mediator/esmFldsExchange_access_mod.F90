@@ -131,8 +131,8 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       ! to atm: from ocn
       ! ---------------------------------------------------------------------
-      allocate(S_flds(1))
-      S_flds = (/'So_t'/) ! sea_surface_temperature
+      allocate(S_flds(3))
+      S_flds = (/'So_t', 'So_u', 'So_v'/) ! sea_surface_temperature
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld_from(compocn, trim(fldname))
@@ -395,6 +395,10 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       call addmap_from(compocn, 'So_t', compatm, mapconsf, 'ofrac', 'unset')
       call addmrg_to(compatm, 'So_t', mrg_from=compocn, mrg_fld='So_t', mrg_type='copy')
+      call addmap_from(compocn, 'So_u', compatm, mapconsf, 'ofrac', 'unset')
+      call addmrg_to(compatm, 'So_u', mrg_from=compocn, mrg_fld='So_u', mrg_type='copy')
+      call addmap_from(compocn, 'So_v', compatm, mapconsf, 'ofrac', 'unset')
+      call addmrg_to(compatm, 'So_v', mrg_from=compocn, mrg_fld='So_v', mrg_type='copy')
 
       call addmap_from(compice, 'Si_t', compatm, mapconsd, 'ifrac', 'unset')
       call addmrg_to(compatm, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
