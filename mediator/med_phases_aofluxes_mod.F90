@@ -78,6 +78,7 @@ module med_phases_aofluxes_mod
   logical :: compute_atm_dens
   logical :: compute_atm_thbot
   integer :: ocn_surface_flux_scheme ! use case
+  logical :: add_gusts
 
   character(len=CS), pointer :: fldnames_ocn_in(:)
   character(len=CS), pointer :: fldnames_atm_in(:)
@@ -125,6 +126,7 @@ module med_phases_aofluxes_mod
      real(R8) , pointer :: shum_HDO    (:) => null() ! atm HDO tracer
      real(R8) , pointer :: shum_18O    (:) => null() ! atm H218O tracer
      real(R8) , pointer :: lwdn        (:) => null() ! atm downward longwave heat flux
+     real(R8) , pointer :: rainc       (:) => null() ! convective rain flux
      ! local size and computational mask and area: on aoflux grid
      integer            :: lsize                     ! local size
      integer  , pointer :: mask        (:) => null() ! integer ocn domain mask: 0 <=> inactive cell
@@ -146,6 +148,9 @@ module med_phases_aofluxes_mod
      real(R8) , pointer :: qref        (:) => null() ! diagnostic: 2m ref Q
      real(R8) , pointer :: u10         (:) => null() ! diagnostic: 10m wind speed
      real(R8) , pointer :: duu10n      (:) => null() ! diagnostic: 10m wind speed squared
+     real(R8) , pointer :: ugust_out   (:) => null() ! diagnostic: gust wind added
+     real(R8) , pointer :: u10_withGust(:) => null() ! diagnostic: gust wind added
+     real(R8) , pointer :: u10res      (:) => null() ! diagnostic: no gust wind added
      real(R8) , pointer :: ustar       (:) => null() ! saved ustar
      real(R8) , pointer :: re          (:) => null() ! saved re
      real(R8) , pointer :: ssq         (:) => null() ! saved sq
@@ -401,6 +406,14 @@ contains
        write(logunit,'(a)') trim(subname)//' ocn_surface_flux_scheme is '//trim(cvalue)
     end if
 #endif
+
+    call NUOPC_CompAttributeGet(gcomp, name='add_gusts', value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+       read(cvalue,*) add_gusts
+    else
+       add_gusts = .false.
+    end if
 
     ! bottom level potential temperature and/or botom level density
     ! will need to be computed if not received from the atm
@@ -767,13 +780,15 @@ contains
     type(ESMF_Mesh)      :: xch_mesh
     real(r8), pointer    :: dataptr(:)
     integer              :: fieldcount
-    integer              :: stp ! srcTermProcessing is declared inout and must have variable not constant
+    integer              :: srcTermProcessing_Value ! srcTermProcessing is declared inout and must have variable not constant
     type(ESMF_CoordSys_Flag)           :: coordSys
     real(ESMF_KIND_R8)    ,allocatable :: garea(:)
     character(len=*),parameter :: subname=' (med_aofluxes_init_xgrid) '
     !-----------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+
+    srcTermProcessing_Value = 0
 
     ! Get the internal state from the mediator Component.
     nullify(is_local%wrap)
@@ -864,23 +879,26 @@ contains
     dataptr(:) = 1.0_r8
 
     ! create agrid->xgrid route handles
-    call ESMF_FieldRegridStore(xgrid, field_a, field_x, routehandle=rh_agrid2xgrid, rc=rc)
+    call ESMF_FieldRegridStore(xgrid, field_a, field_x, routehandle=rh_agrid2xgrid, &
+         srcTermProcessing=srcTermProcessing_Value, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     call ESMF_FieldRegridStore(xgrid, field_a, field_x, routehandle=rh_agrid2xgrid_2ndord, &
-         regridmethod=ESMF_REGRIDMETHOD_CONSERVE_2ND, rc=rc)
+         regridmethod=ESMF_REGRIDMETHOD_CONSERVE_2ND, srcTermProcessing=srcTermProcessing_Value, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     if (trim(coupling_mode) == 'cesm') then
-       stp = 1
        call ESMF_FieldRegridStore(field_a, field_x, routehandle=rh_agrid2xgrid_bilinr, &
-            regridmethod=ESMF_REGRIDMETHOD_BILINEAR, dstMaskValues=(/0/), srcTermProcessing=stp, rc=rc)
+            regridmethod=ESMF_REGRIDMETHOD_BILINEAR, dstMaskValues=(/0/), &
+            srcTermProcessing=srcTermProcessing_Value, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call ESMF_FieldRegridStore(field_a, field_x, routehandle=rh_agrid2xgrid_patch, &
-            regridmethod=ESMF_REGRIDMETHOD_PATCH, dstMaskValues=(/0/), srcTermProcessing=stp, rc=rc)
+            regridmethod=ESMF_REGRIDMETHOD_PATCH, dstMaskValues=(/0/), &
+            srcTermProcessing=srcTermProcessing_Value, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
     end if
 
     ! create xgrid->zgrid route handle
-    call ESMF_FieldRegridStore(xgrid, field_x, field_a, routehandle=rh_xgrid2agrid, rc=rc)
+    call ESMF_FieldRegridStore(xgrid, field_x, field_a, routehandle=rh_xgrid2agrid, &
+         srcTermProcessing=srcTermProcessing_Value, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
     ! destroy temporary field
@@ -898,12 +916,14 @@ contains
     call ESMF_FieldGet(field_o, farrayptr=dataptr, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     dataptr(:) = 1.0_r8
-    call ESMF_FieldRegridStore(xgrid, field_o, field_x, routehandle=rh_ogrid2xgrid, rc=rc)
+    call ESMF_FieldRegridStore(xgrid, field_o, field_x, routehandle=rh_ogrid2xgrid, &
+         srcTermProcessing=srcTermProcessing_Value, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_FieldRegridStore(xgrid, field_x, field_o, routehandle=rh_xgrid2ogrid, rc=rc)
+    call ESMF_FieldRegridStore(xgrid, field_x, field_o, routehandle=rh_xgrid2ogrid, &
+         srcTermProcessing=srcTermProcessing_Value, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     ! call ESMF_FieldRegridStore(xgrid, field_o, field_x, routehandle=rh_ogrid2xgrid_2ndord, &
-    !      regridmethod=ESMF_REGRIDMETHOD_CONSERVE_2ND, rc=rc)
+    !      regridmethod=ESMF_REGRIDMETHOD_CONSERVE_2ND, srcTermProcessing=srcTermProcessing_Value, rc=rc)
     ! if (chkerr(rc,__LINE__,u_FILE_u)) return
     call ESMF_FieldDestroy(field_o, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -1024,7 +1044,7 @@ contains
     end if
     if (compute_atm_dens) then
        if (trim(aoflux_code) == 'ccpp' .and. &
-          (trim(coupling_mode) == 'nems_frac_aoflux' .or. trim(coupling_mode) == 'nems_frac_aoflux_sbs')) then
+          (trim(coupling_mode) == 'ufs.frac.aoflux')) then
           ! Add limiting factor to humidity to be consistent with UFS aoflux calculation
           do n = 1,aoflux_in%lsize
              if (aoflux_in%mask(n) /= 0.0_r8) then
@@ -1052,6 +1072,7 @@ contains
     call flux_atmocn (logunit=logunit, &
          nMax=aoflux_in%lsize, &
          zbot=aoflux_in%zbot, ubot=aoflux_in%ubot, vbot=aoflux_in%vbot, thbot=aoflux_in%thbot, qbot=aoflux_in%shum, &
+         rainc=aoflux_in%rainc, &
          s16O=aoflux_in%shum_16O, sHDO=aoflux_in%shum_HDO, s18O=aoflux_in%shum_18O, rbot=aoflux_in%dens, &
          tbot=aoflux_in%tbot, us=aoflux_in%uocn, vs=aoflux_in%vocn, pslv=aoflux_in%psfc, ts=aoflux_in%tocn, &
          mask=aoflux_in%mask, seq_flux_atmocn_minwind=0.5_r8, &
@@ -1060,7 +1081,11 @@ contains
          evap=aoflux_out%evap, evap_16O=aoflux_out%evap_16O, evap_HDO=aoflux_out%evap_HDO, evap_18O=aoflux_out%evap_18O, &
          taux=aoflux_out%taux, tauy=aoflux_out%tauy, tref=aoflux_out%tref, qref=aoflux_out%qref, &
          ocn_surface_flux_scheme=ocn_surface_flux_scheme, &
-         duu10n=aoflux_out%duu10n, ustar_sv=aoflux_out%ustar, re_sv=aoflux_out%re, ssq_sv=aoflux_out%ssq, &
+         add_gusts=add_gusts, &
+         duu10n=aoflux_out%duu10n, &
+         ugust_out = aoflux_out%ugust_out, &
+         u10res = aoflux_out%u10res, &
+         ustar_sv=aoflux_out%ustar, re_sv=aoflux_out%re, ssq_sv=aoflux_out%ssq, &
          missval=0.0_r8)
 
 #else
@@ -1084,7 +1109,8 @@ contains
             ocn_surface_flux_scheme=ocn_surface_flux_scheme, &
             sen=aoflux_out%sen, lat=aoflux_out%lat, lwup=aoflux_out%lwup, evap=aoflux_out%evap, &
             taux=aoflux_out%taux, tauy=aoflux_out%tauy, tref=aoflux_out%tref, qref=aoflux_out%qref, &
-            duu10n=aoflux_out%duu10n, missval=0.0_r8)
+            duu10n=aoflux_out%duu10n, &
+            missval=0.0_r8)
 #ifdef UFS_AOFLUX
      end if
 #endif
@@ -1093,7 +1119,8 @@ contains
 
     do n = 1,aoflux_in%lsize
        if (aoflux_in%mask(n) /= 0) then
-          aoflux_out%u10(n) = sqrt(aoflux_out%duu10n(n))
+          aoflux_out%u10(n)          = aoflux_out%u10res(n)
+          aoflux_out%u10_withGust(n) = sqrt(aoflux_out%duu10n(n))
        end if
     enddo
 
@@ -1562,8 +1589,8 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
     lsize = size(aoflux_in%zbot)
     aoflux_in%lsize = lsize
 
-    ! bulk formula quantities for nems_orig_data
-    if (trim(coupling_mode) == 'nems_orig_data' .and. ocn_surface_flux_scheme == -1) then
+    ! bulk formula quantities for ufs non-frac with med-aoflux
+    if (trim(coupling_mode) == 'ufs.nfrac.aoflux' .and. ocn_surface_flux_scheme == -1) then
        call fldbun_getfldptr(fldbun_a, 'Sa_u10m', aoflux_in%ubot, xgrid=xgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call fldbun_getfldptr(fldbun_a, 'Sa_v10m', aoflux_in%vbot, xgrid=xgrid, rc=rc)
@@ -1581,10 +1608,18 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call fldbun_getfldptr(fldbun_a, 'Sa_shum', aoflux_in%shum, xgrid=xgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
+       if (add_gusts) then
+          call fldbun_getfldptr(fldbun_a, 'Faxa_rainc', aoflux_in%rainc, xgrid=xgrid, rc=rc)
+          if (chkerr(rc,__LINE__,u_FILE_u)) return
+       else
+          ! rainc is not used without add_gusts but some compilers complain about the unallocated pointer
+          ! in the subroutine interface
+          allocate(aoflux_in%rainc(1))
+       end if
     end if
 
-    ! extra fields for nems_frac_aoflux
-    if (trim(coupling_mode) == 'nems_frac_aoflux' .or. trim(coupling_mode) == 'nems_frac_aoflux_sbs') then
+    ! extra fields for ufs.frac.aoflux
+    if (trim(coupling_mode) == 'ufs.frac.aoflux') then
        call fldbun_getfldptr(fldbun_a, 'Sa_u10m', aoflux_in%usfc, xgrid=xgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call fldbun_getfldptr(fldbun_a, 'Sa_v10m', aoflux_in%vsfc, xgrid=xgrid, rc=rc)
@@ -1609,7 +1644,13 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
        if (chkerr(rc,__LINE__,u_FILE_u)) return
     end if
 
-    if (FB_fldchk(fldbun_a, 'Sa_pslv', rc=rc)) then
+    ! The following conditional captures the cases where aoflux_in%psfc is needed in calls
+    ! to flux_atmocn / flux_atmocn_ccpp. Note that coupling_mode=='cesm' is equivalent to
+    ! the CESMCOUPLED CPP token, and coupling_mode(1:3)=='ufs' is roughly equivalent to
+    ! the UFS_AOFLUX CPP token (noting that we should only be in this subroutine if using
+    ! one of the aoflux variants of the ufs coupling_mode).
+    if ((trim(coupling_mode) == 'cesm') .or. &
+         (coupling_mode(1:3) == 'ufs' .and. trim(aoflux_code) == 'ccpp')) then
        call fldbun_getfldptr(fldbun_a, 'Sa_pslv', aoflux_in%psfc, xgrid=xgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
     end if
@@ -1618,10 +1659,6 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
     if (compute_atm_dens .or. compute_atm_thbot) then
        call fldbun_getfldptr(fldbun_a, 'Sa_pbot', aoflux_in%pbot, xgrid=xgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-       if (trim(coupling_mode) == 'nems_frac_aoflux' .or. trim(coupling_mode) == 'nems_frac_aoflux_sbs') then
-          call fldbun_getfldptr(fldbun_a, 'Sa_pslv', aoflux_in%psfc, xgrid=xgrid, rc=rc)
-          if (chkerr(rc,__LINE__,u_FILE_u)) return
-       end if
     end if
 
     if (flds_wiso) then
@@ -1692,6 +1729,8 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     call fldbun_getfldptr(fldbun, 'So_duu10n', aoflux_out%duu10n, xgrid=xgrid, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
+    call fldbun_getfldptr(fldbun, 'So_u10res', aoflux_out%u10res, xgrid=xgrid, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
     call fldbun_getfldptr(fldbun, 'Faox_taux', aoflux_out%taux, xgrid=xgrid, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     call fldbun_getfldptr(fldbun, 'Faox_tauy', aoflux_out%tauy, xgrid=xgrid, rc=rc)
@@ -1704,6 +1743,7 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     call fldbun_getfldptr(fldbun, 'Faox_lwup', aoflux_out%lwup, xgrid=xgrid, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
+
     if (flds_wiso) then
        call fldbun_getfldptr(fldbun, 'Faox_evap_16O', aoflux_out%evap_16O, xgrid=xgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -1715,6 +1755,15 @@ end subroutine med_aofluxes_map_ogrid2xgrid_input
        allocate(aoflux_out%evap_16O(lsize)); aoflux_out%evap_16O(:) = 0._R8
        allocate(aoflux_out%evap_18O(lsize)); aoflux_out%evap_18O(:) = 0._R8
        allocate(aoflux_out%evap_HDO(lsize)); aoflux_out%evap_HDO(:) = 0._R8
+    end if
+    if (add_gusts) then
+       call fldbun_getfldptr(fldbun, 'So_ugustOut', aoflux_out%ugust_out, xgrid=xgrid, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+       call fldbun_getfldptr(fldbun, 'So_u10withGust', aoflux_out%u10_withGust, xgrid=xgrid, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+    else
+       allocate(aoflux_out%ugust_out(lsize)); aoflux_out%ugust_out(:) = 0._R8
+       allocate(aoflux_out%u10_withGust(lsize)); aoflux_out%u10_withGust(:) = 0._R8
     end if
 
   end subroutine set_aoflux_out_pointers
