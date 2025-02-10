@@ -224,6 +224,9 @@ contains
     else if (trim(coupling_mode(1:5)) == 'nems_') then
        call med_phases_prep_ocn_custom_nems(gcomp, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    else if (trim(coupling_mode) == 'access') then
+       call med_phases_prep_ocn_custom_access(gcomp, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
     ! ocean accumulator
@@ -721,5 +724,95 @@ contains
     call t_stopf('MED:'//subname)
 
   end subroutine med_phases_prep_ocn_custom_nems
+
+  subroutine med_phases_prep_ocn_custom_access(gcomp, rc)
+
+   ! ----------------------------------------------
+   ! Custom calculation for access cm3
+   ! ----------------------------------------------
+
+   use ESMF , only : ESMF_GridComp, ESMF_FieldBundleGet, ESMF_FieldCreate
+   use ESMF , only : ESMF_FieldGet, ESMF_Field, ESMF_Mesh, ESMF_MESHLOC_ELEMENT, ESMF_TYPEKIND_R8
+   use ESMF , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
+   use ESMF , only : ESMF_FAILURE,  ESMF_LOGMSG_ERROR
+   use med_map_mod           , only : med_map_field
+   use med_internalstate_mod , only : mapconsf
+
+   ! input/output variables
+   type(ESMF_GridComp)  :: gcomp
+   integer, intent(out) :: rc
+
+   ! local variables
+   type(InternalState) :: is_local
+   real(R8), pointer   :: scale_a_ptr(:), scale_o_ptr(:), ocn_flux_a_ptr(:), ocn_flux_o_ptr(:), ocn_flux_ao_ptr(:)
+   type(ESMF_Mesh)     :: mesh_a, mesh_o
+   integer             :: lsize, i
+   type(ESMF_Field) :: scale_a, scale_o, ocn_flux_a, ocn_flux_o, ocn_flux_ao
+   character(len=*), parameter    :: subname='(med_phases_prep_ocn_custom_access)'
+   !---------------------------------------
+
+   rc = ESMF_SUCCESS
+
+   call t_startf('MED:'//subname)
+   if (dbug_flag > 20) then
+      call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+   end if
+   call memcheck(subname, 5, maintask)
+
+   ! Get the internal state
+   nullify(is_local%wrap)
+   call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
+   if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+   ! get mediator and UM calculated fluxes
+   call ESMF_FieldBundleGet(is_local%wrap%FBImp(compatm, compatm), fieldName='Foxx_evap', field=ocn_flux_a, rc=rc)
+   call ESMF_FieldBundleGet(is_local%wrap%FBExp(compocn), fieldName='Foxx_evap', field=ocn_flux_o, rc=rc)
+   call ESMF_FieldBundleGet(is_local%wrap%FBMed_aoflux_o, fieldName='Faox_evap', field=ocn_flux_ao, rc=rc)
+   ! call ESMF_FieldBundleGet(is_local%wrap%FBExp(compocn), fieldName='Foxx_evap', field=ocn_flux_ao, rc=rc)
+
+   ! create flux scaling fields
+   call ESMF_FieldGet(ocn_flux_o, mesh=mesh_o, rc=rc)
+   scale_o = ESMF_FieldCreate(mesh_o, name='scale_o', typekind=ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
+
+   call ESMF_FieldGet(ocn_flux_a, mesh=mesh_a, rc=rc)
+   scale_a = ESMF_FieldCreate(mesh_a, name='scale_a', typekind=ESMF_TYPEKIND_R8, meshloc=ESMF_MESHLOC_ELEMENT, rc=rc)
+
+   ! conservatively map the mediator calculated flux to the atmosphere
+   call med_map_field(field_src=ocn_flux_ao, field_dst=scale_a, &
+         routehandles=is_local%wrap%RH(compocn,compatm,:), maptype=mapconsf, rc=rc)
+   
+   call ESMF_FieldGet(scale_a, farrayptr=scale_a_ptr)
+   call ESMF_FieldGet(ocn_flux_a, farrayptr=ocn_flux_a_ptr)
+
+   ! flux scaling factor is UM flux / (remapped) mediator flux
+   lsize = size(scale_a_ptr)
+   do i=1,lsize
+      if (ocn_flux_a_ptr(i) > 0) then
+         scale_a_ptr(i) = ocn_flux_a_ptr(i) / scale_a_ptr(i)
+      end if
+   enddo
+
+   ! conservatively map scaling factor to the ocean grid
+   call med_map_field(field_src=scale_a, field_dst=scale_o, &
+         routehandles=is_local%wrap%RH(compatm,compocn,:), maptype=mapconsf, rc=rc)
+
+   call ESMF_FieldGet(scale_o, farrayptr=scale_o_ptr)
+   call ESMF_FieldGet(ocn_flux_o, farrayptr=ocn_flux_o_ptr)
+   call ESMF_FieldGet(ocn_flux_ao, farrayptr=ocn_flux_ao_ptr)
+
+   ! apply scaling factor to ocean flux
+   lsize = size(scale_o_ptr)
+   do i=1,lsize
+      if (ocn_flux_a_ptr(i) > 0) then
+         ocn_flux_o_ptr(i) = scale_o_ptr(i) * ocn_flux_ao_ptr(i)
+      end if
+   enddo
+
+   if (dbug_flag > 20) then
+      call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
+   end if
+   call t_stopf('MED:'//subname)
+
+ end subroutine med_phases_prep_ocn_custom_access
 
 end module med_phases_prep_ocn_mod

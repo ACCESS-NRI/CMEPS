@@ -15,6 +15,7 @@ module esmFldsExchange_access_mod
     use esmFlds               , only : addmrg_to => med_fldList_addmrg_to
     use esmFlds               , only : addfld_from => med_fldList_addfld_from
     use esmFlds               , only : addmap_from => med_fldList_addmap_from
+    use esmFlds               , only : addfld_aoflux => med_fldList_addfld_aoflux
 
     !---------------------------------------------------------------------
     ! This is a mediator specific routine that determines ALL possible
@@ -115,6 +116,7 @@ module esmFldsExchange_access_mod
       ! FIELDS TO MEDIATOR component (for fractions and atm/ocn flux calculation)
       !=====================================================================
 
+      call addfld_aoflux('Faox_evap')
       !----------------------------------------------------------
       ! to med: masks from components
       !----------------------------------------------------------
