@@ -16,6 +16,7 @@ module esmFldsExchange_access_mod
     use esmFlds               , only : addfld_from => med_fldList_addfld_from
     use esmFlds               , only : addmap_from => med_fldList_addmap_from
     use esmFlds               , only : addfld_aoflux => med_fldList_addfld_aoflux
+    use esmFlds               , only : addfld_ocnalb => med_fldList_addfld_ocnalb
 
     !---------------------------------------------------------------------
     ! This is a mediator specific routine that determines ALL possible
@@ -116,7 +117,26 @@ module esmFldsExchange_access_mod
       ! FIELDS TO MEDIATOR component (for fractions and atm/ocn flux calculation)
       !=====================================================================
 
-      call addfld_aoflux('Faox_evap')
+      call addfld_aoflux('So_tref')
+      call addfld_aoflux('So_u10')
+      call addfld_aoflux('So_qref')
+      call addfld_aoflux('So_tref')
+      call addfld_aoflux( 'Faox_taux')
+      call addfld_aoflux( 'Faox_tauy')
+      call addfld_aoflux( 'Faox_lat')
+      call addfld_aoflux( 'Faox_sen')
+      call addfld_aoflux( 'Faox_evap')
+      call addfld_aoflux( 'Faox_lwup')
+      call addfld_aoflux('So_ssq')
+      call addfld_aoflux('So_re')
+      call addfld_aoflux('So_ustar')
+      call addfld_aoflux( 'So_duu10n')
+
+      call addfld_ocnalb('So_avsdr')
+      call addfld_ocnalb( 'So_avsdf')
+      call addfld_ocnalb( 'So_anidr')
+      call addfld_ocnalb( 'So_anidf')
+
       !----------------------------------------------------------
       ! to med: masks from components
       !----------------------------------------------------------
