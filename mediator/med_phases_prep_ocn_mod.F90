@@ -249,8 +249,10 @@ contains
     end if
 
     ! custom merges to ocean
-    call med_phases_prep_ocn_custom(gcomp, rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (trim(coupling_mode) /= "access") then
+        call med_phases_prep_ocn_custom(gcomp, rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
     ! ocean accumulator
     call FB_accum(is_local%wrap%FBExpAccumOcn, is_local%wrap%FBExp(compocn), rc=rc)
