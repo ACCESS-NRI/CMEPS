@@ -450,11 +450,9 @@ contains
                 call ESMF_FieldBundleGet(FBflds, fieldName=lfieldnamelist(n), field=lfield, rc=rc)
                 if (chkerr(rc,__LINE__,u_FILE_u)) return
              elseif (present(STflds)) then
-                ! call med_methods_State_getNameN(STflds, n, lname, rc)
-                ! Code change here
                 lname = trim(lfieldnamelist(n))
                 if (chkerr(rc,__LINE__,u_FILE_u)) return
-                call ESMF_StateGet(STflds, itemName=lname, field=lfield, rc=rc)                
+                call ESMF_StateGet(STflds, itemName=lname, field=lfield, rc=rc)
                 if (chkerr(rc,__LINE__,u_FILE_u)) return
              end if
 
