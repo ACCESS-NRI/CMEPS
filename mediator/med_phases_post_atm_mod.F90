@@ -33,7 +33,7 @@ contains
     use med_map_mod           , only : med_map_field_packed
     use med_constants_mod     , only : dbug_flag => med_constants_dbug_flag
     use med_utils_mod         , only : chkerr    => med_utils_ChkErr
-    use med_internalstate_mod , only : compocn, compatm, compice, complnd, compwav
+    use med_internalstate_mod , only : compocn, compatm, compice, complnd, compwav, coupling_mode
     use perf_mod              , only : t_startf, t_stopf
 
     ! input/output variables
@@ -57,6 +57,11 @@ contains
     nullify(is_local%wrap)
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    if (trim(coupling_mode) == 'access') then
+      call med_phases_post_atm_custom_access(gcomp, rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
 
     ! map atm to ocn
     if (is_local%wrap%med_coupling_active(compatm,compocn)) then
@@ -127,5 +132,73 @@ contains
     call t_stopf('MED:'//subname)
 
   end subroutine med_phases_post_atm
+
+  subroutine med_phases_post_atm_custom_access(gcomp, rc)
+   use med_kind_mod          , only : CX=>SHR_KIND_CX, CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, R8=>SHR_KIND_R8
+   use med_internalstate_mod , only : compocn, compatm, compice, coupling_mode
+   use med_internalstate_mod , only : InternalState
+   use ESMF , only : ESMF_GridComp, ESMF_FieldBundleGet
+   use ESMF , only : ESMF_FieldGet, ESMF_Field
+   use ESMF , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
+   use med_constants_mod     , only : dbug_flag => med_constants_dbug_flag
+   use perf_mod              , only : t_startf, t_stopf
+
+   ! input/output variables
+   type(ESMF_GridComp)  :: gcomp
+   integer, intent(out) :: rc
+
+   ! local variables
+   type(InternalState) :: is_local
+   real(R8), pointer   :: ice_frac_cat_ptr(:, :), ice_flux_cat_ptr(:, :)
+   type(ESMF_Field) :: ice_frac_cat, ice_flux_cat
+   integer             :: lsize1, lsize2, i, j, n
+   character(len=*), parameter    :: subname='(med_phases_post_atm_custom_access)'
+   character(len=CS) :: fld_names(4)
+   !---------------------------------------
+
+   rc = ESMF_SUCCESS
+
+   call t_startf('MED:'//subname)
+   if (dbug_flag > 20) then
+      call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+   end if
+
+   ! Get the internal state
+   nullify(is_local%wrap)
+   call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
+   
+   call ESMF_FieldBundleGet(is_local%wrap%FBImp(compice, compatm), fieldName='ia_aicen', field=ice_frac_cat, rc=rc)
+   call ESMF_FieldGet(ice_frac_cat, farrayptr=ice_frac_cat_ptr)
+
+   lsize1 = size(ice_frac_cat_ptr, dim=1)
+   lsize2 = size(ice_frac_cat_ptr, dim=2)
+
+   fld_names = [character(len=CS) :: &
+   'topmelt', &
+   'botmelt', &
+   'sublim', &
+   'pen_rad']
+   
+   do n = 1,size(fld_names)
+      
+      call ESMF_FieldBundleGet(is_local%wrap%FBImp(compatm, compatm), fieldName=trim(fld_names(n)), field=ice_flux_cat, rc=rc)
+      call ESMF_FieldGet(ice_flux_cat, farrayptr=ice_flux_cat_ptr)
+
+      do j = 1,lsize2
+         do i = 1,lsize1
+            if (ice_frac_cat_ptr(i, j) > 0.0) then
+               ice_flux_cat_ptr(i, j) = ice_flux_cat_ptr(i, j) / ice_frac_cat_ptr(i, j)
+            end if
+         end do
+      end do
+      
+   end do
+
+   if (dbug_flag > 20) then
+      call ESMF_LogWrite(subname//' done', ESMF_LOGMSG_INFO)
+   end if
+   call t_stopf('MED:'//subname)
+
+  end subroutine med_phases_post_atm_custom_access
 
 end module med_phases_post_atm_mod
