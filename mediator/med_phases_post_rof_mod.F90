@@ -20,9 +20,12 @@ module med_phases_post_rof_mod
   use med_phases_history_mod, only : med_phases_history_write_comp
   use med_map_mod           , only : med_map_field_packed
   use med_methods_mod       , only : fldbun_getdata1d => med_methods_FB_getdata1d
+  use med_methods_mod       , only : fldbun_getdata2d => med_methods_FB_getdata2d
   use med_methods_mod       , only : fldbun_getmesh   => med_methods_FB_getmesh
+  ! use med_methods_mod       , only : field_getdata2d  => med_methods_Field_getdata2d
   use perf_mod              , only : t_startf, t_stopf
   use shr_log_mod           , only : shr_log_error
+
 
   implicit none
   private
@@ -38,8 +41,13 @@ module med_phases_post_rof_mod
   integer :: num_rof_fields
   character(len=CS), allocatable :: rof_field_names(:)
 
+  ! A local FieldBundle to store the distribution(s) pattern for runoff.
+  type(ESMF_FieldBundle) :: FBrof_pattern
+
   logical :: remove_negative_runoff_lnd
   logical :: remove_negative_runoff_glc
+  logical :: spread_rofi
+  character(len=CL) :: rof2ocn_ice_spread
 
   character(len=9), parameter :: fields_to_remove_negative_runoff_lnd(2) = &
        ['Forr_rofl', &
@@ -47,6 +55,8 @@ module med_phases_post_rof_mod
   character(len=13), parameter :: fields_to_remove_negative_runoff_glc(2) = &
        ['Forr_rofl_glc', &
         'Forr_rofi_glc']
+  character(len=9), parameter :: fields_to_spread_runoff(1) = &
+       ['Forr_rofi']
  
   character(*) , parameter :: u_FILE_u = &
        __FILE__
@@ -64,6 +74,7 @@ contains
     ! local variables
     character(CL) :: cvalue
     logical       :: isPresent, isSet
+    integer             :: n
 
     character(len=*), parameter :: subname='(med_phases_post_rof_init)'
     !---------------------------------------
@@ -94,9 +105,19 @@ contains
       remove_negative_runoff_glc = .false.
     end if
 
+    call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_ice_spread', value=rof2ocn_ice_spread, isPresent=isPresent, isSet=isSet, rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+    if (isPresent .and. isSet) then
+      spread_rofi = .true.
+    else
+      spread_rofi = .false.
+    end if
+
     if (maintask) then
       write(logunit,'(a,l7)') trim(subname)//' remove_negative_runoff_lnd = ', remove_negative_runoff_lnd
       write(logunit,'(a,l7)') trim(subname)//' remove_negative_runoff_glc = ', remove_negative_runoff_glc
+      write(logunit,'(a,l7)') trim(subname)//' spread_rofi = ', spread_rofi
+      if (spread_rofi) write(logunit,'(a)') trim(subname)//' rof2ocn_ice_spread = '//trim(rof2ocn_ice_spread)
     end if
 
     if (dbug_flag > 20) then
@@ -128,6 +149,10 @@ contains
        call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
     end if
 
+    if (spread_rofi) then
+        call med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
+    endif
+
     nullify(is_local%wrap)
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -156,6 +181,17 @@ contains
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
         if (exists) then
           call med_phases_post_rof_remove_negative_runoff(gcomp, fields_to_remove_negative_runoff_glc(n), rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+        end if
+      end do
+    end if
+
+    if (spread_rofi) then
+      do n = 1, size(fields_to_spread_runoff)
+        call ESMF_FieldBundleGet(FBrof_r, fieldName=trim(fields_to_spread_runoff(n)), isPresent=exists, rc=rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+        if (exists) then
+          call med_phases_post_rof_spread_rofi(gcomp, fields_to_spread_runoff(n), rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
         end if
       end do
@@ -407,5 +443,246 @@ contains
     call t_stopf('MED:'//subname)
 
   end subroutine med_phases_post_rof_remove_negative_runoff
+
+  subroutine med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
+    !---------------------------------------------------------------
+    use med_io_mod       , only : med_io_read
+
+    ! input/output variables
+    type(ESMF_GridComp)  :: gcomp
+    integer, intent(out) :: rc
+
+
+    type(ESMF_Mesh)     :: mesh_l
+    type(InternalState) :: is_local
+    type(ESMF_VM)       :: vm
+    type(ESMF_field) :: field_l                ! climatology, 12 months
+    real(r8), pointer   :: areas(:), lats(:)
+    real(r8), pointer     :: rof2ocn_spread(:,:)
+    real(r8), pointer   :: runoff_flux(:)  ! temporary 1d pointer
+    real(r8)            :: local_sh(1), global_sh(1) !Antarctic (frozen) runoff
+    real(r8)            :: local_nh(1), global_nh(1) !Greenland (frozen) runoff
+
+    integer :: n, i
+
+    integer, parameter :: dbug_threshold = 0 ! threshold for writing debug information in this subroutine
+    character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_init_rof_spread_rofi)'
+    !---------------------------------------
+
+    rc = ESMF_SUCCESS
+
+    call t_startf('MED:'//subname)
+    if (dbug_flag > dbug_threshold) then
+      call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
+    end if
+
+    nullify(is_local%wrap)
+    call ESMF_LogWrite(trim(subname)//": tryign to access gcomp", ESMF_LOGMSG_INFO)
+
+    call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    call ESMF_LogWrite(trim(subname)//": tryign to get gcomp", ESMF_LOGMSG_INFO)
+    call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    ! -------------------------------
+    ! Create module fields on rof mesh
+    ! -------------------------------
+
+    ! if (dbug_flag > dbug_threshold) then
+      call ESMF_LogWrite(trim(subname)//": tryign to access mesh", ESMF_LOGMSG_INFO)
+    ! end if
+    call fldbun_getmesh(is_local%wrap%FBImp(comprof,comprof), mesh_l, rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    FBrof_pattern = ESMF_FieldBundleCreate(name='FBrof_pattern', rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    do n = 1, size(fields_to_spread_runoff)
+
+      ! assume climatology
+      ! if (dbug_flag > dbug_threshold) then
+        call ESMF_LogWrite(trim(subname)//": tryign to create field", ESMF_LOGMSG_INFO)
+      ! end if
+      field_l = ESMF_FieldCreate(mesh_l, ESMF_TYPEKIND_R8, name=trim(fields_to_spread_runoff(n)), meshloc=ESMF_MESHLOC_ELEMENT, &
+          ungriddedLBound=(/1/), ungriddedUBound=(/12/), rc=rc)
+      if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+      call ESMF_FieldBundleAdd(FBrof_pattern, (/field_l/), rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    end do
+
+    call ESMF_LogWrite(trim(subname)//": tryign to read rof2ocn_spread from file", ESMF_LOGMSG_INFO)
+    call med_io_read(rof2ocn_ice_spread, vm, FBrof_pattern, pre='pattern',  rc=rc)
+    if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    do n = 1, size(fields_to_spread_runoff)
+
+      call fldbun_getdata2d(FBrof_pattern, trim(fields_to_spread_runoff(n)), rof2ocn_spread, rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      runoff_flux = rof2ocn_spread(:,1)
+      areas => is_local%wrap%mesh_info(comprof)%areas
+      lats => is_local%wrap%mesh_info(comprof)%lats
+
+      local_sh(1) = 0.0_r8
+      local_nh(1) = 0.0_r8
+      do i = 1, size(runoff_flux)
+        if (lats(i) < 0.0_r8) then
+          local_sh(1) = local_sh(1) + areas(i) * runoff_flux(i)
+        else
+          local_nh(1) = local_nh(1) + areas(i) * runoff_flux(i)
+        end if
+      end do
+
+      call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
+          reduceflag=ESMF_REDUCE_SUM, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
+          reduceflag=ESMF_REDUCE_SUM, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      ! if (maintask .and. dbug_flag > dbug_threshold) then
+      if (maintask) then
+        write(logunit,'(a)') subname//' Correction: '//trim(fields_to_spread_runoff(n))
+        write(logunit,'(a,e27.17)') subname//' Correction_sh = ', global_sh(1)
+        write(logunit,'(a,e27.17)') subname//' Correction_nh = ', global_nh(1)
+      end if
+
+      ! adjust correction so that it's sums to 1 in each hemisphere
+      do i = 1, size(runoff_flux)
+        if (runoff_flux(i) > 0.0000001_r8) then ! is there a better accuracy number to use here ?
+          if (lats(i) < 0.0_r8) then
+            runoff_flux(i) = runoff_flux(i) / global_sh(1)
+          else
+            runoff_flux(i) = runoff_flux(i) / global_nh(1)
+          end if
+        end if
+      end do
+
+
+      local_sh(1) = 0.0_r8
+      local_nh(1) = 0.0_r8
+      do i = 1, size(runoff_flux)
+        if (lats(i) < 0.0_r8) then
+          local_sh(1) = local_sh(1) + areas(i) * runoff_flux(i)
+        else
+          local_nh(1) = local_nh(1) + areas(i) * runoff_flux(i)
+        end if
+      end do
+
+      call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
+          reduceflag=ESMF_REDUCE_SUM, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
+          reduceflag=ESMF_REDUCE_SUM, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      ! if (maintask .and. dbug_flag > dbug_threshold) then
+      if (maintask) then
+        write(logunit,'(a)') subname//' Correction: '//trim(fields_to_spread_runoff(n))
+        write(logunit,'(a,e27.17)') subname//' Correction_sh = ', global_sh(1)
+        write(logunit,'(a,e27.17)') subname//' Correction_nh = ', global_nh(1)
+      end if
+
+    enddo
+
+    if (dbug_flag > dbug_threshold) then
+      call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
+    end if
+    call t_stopf('MED:'//subname)
+
+  end subroutine med_phases_post_rof_init_rof_spread_rofi
+
+
+  subroutine med_phases_post_rof_spread_rofi(gcomp, field_name, rc)
+    !---------------------------------------------------------------
+    ! For one runoff field, spread runoff according to the pattern prescribed in spread_rofi_weights.
+
+    ! input/output variables
+    type(ESMF_GridComp)  :: gcomp
+    character(len=*), intent(in) :: field_name  ! name of runoff flux field to process
+    integer, intent(out) :: rc
+
+    ! local variables
+    type(InternalState) :: is_local
+    type(ESMF_VM)       :: vm
+    real(r8), pointer   :: runoff_flux(:)   ! temporary 1d pointer
+    real(r8), pointer   :: rof2ocn_spread(:,:)
+    real(r8), pointer   :: areas(:), lats(:)
+    real(r8)            :: local_sh(1), global_sh(1) !Antarctic (frozen) runoff
+    real(r8)            :: local_nh(1), global_nh(1) !Greenland (frozen) runoff
+    real(r8)            :: global_sum
+    ! real(r8)            :: multiplier
+    ! real(r8)            :: local_positive_final(1), global_positive_final(1)
+    ! real(r8)            :: local_negative_final(1), global_negative_final(1)
+    ! real(r8)            :: global_sum_final
+    integer :: n
+
+    integer, parameter :: dbug_threshold = 20 ! threshold for writing debug information in this subroutine
+    character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_spread_rofi)'
+    !---------------------------------------
+
+    rc = ESMF_SUCCESS
+
+    call t_startf('MED:'//subname)
+    if (dbug_flag > dbug_threshold) then
+      call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
+    end if
+
+    nullify(is_local%wrap)
+    call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    areas => is_local%wrap%mesh_info(comprof)%areas
+    lats => is_local%wrap%mesh_info(comprof)%lats
+
+    call fldbun_getdata1d(FBrof_r, trim(field_name), runoff_flux, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    local_sh(1) = 0.0_r8
+    local_nh(1) = 0.0_r8
+    do n = 1, size(runoff_flux)
+      if (lats(n) < 0.0_r8) then
+        local_sh(1) = local_sh(1) + areas(n) * runoff_flux(n)
+      else
+        local_nh(1) = local_nh(1) + areas(n) * runoff_flux(n)
+      end if
+    end do
+
+    call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
+         reduceflag=ESMF_REDUCE_SUM, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
+         reduceflag=ESMF_REDUCE_SUM, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    ! if (maintask .and. dbug_flag > dbug_threshold) then
+    if (maintask) then
+      write(logunit,'(a)') subname//' Before correction: '//trim(field_name)
+      write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sh(1)
+      write(logunit,'(a,e27.17)') subname//' global_nh = ', global_nh(1)
+    end if
+
+    ! call field_getdata2d(field_rof2ocn_ice_spread, rof2ocn_spread, rc)
+    ! if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+    ! spear runoff by the saved pattern so that it's sums to 1 in each hemisphere
+    do n = 1, size(runoff_flux)
+      if (runoff_flux(n) > 0.0000001_r8) then ! is there a better accuracy number to use here ?
+        if (lats(n) < 0.0_r8) then
+          runoff_flux(n) = rof2ocn_spread(n,1) * global_sh(1)
+        else
+          runoff_flux(n) = rof2ocn_spread(n,1) * global_nh(1)
+        end if
+      end if
+    end do
+
+    if (dbug_flag > dbug_threshold) then
+      call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
+    end if
+    call t_stopf('MED:'//subname)
+
+  end subroutine med_phases_post_rof_spread_rofi
 
 end module med_phases_post_rof_mod
