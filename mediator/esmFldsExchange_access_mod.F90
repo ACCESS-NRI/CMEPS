@@ -212,7 +212,7 @@ module esmFldsExchange_access_mod
       F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
       F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
       F_flds(5,:) = (/'Fioi_taux', 'Foxx_taux'/)
-      F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! heat flux sea-ice to ocean
+      F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! surface stress sea-ice to ocean
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
