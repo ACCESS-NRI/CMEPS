@@ -3,10 +3,7 @@ module esmFldsExchange_access_mod
     use ESMF
     use NUOPC
     use med_utils_mod         , only : chkerr => med_utils_chkerr
-    use med_kind_mod          , only : CX=>SHR_KIND_CX
-    use med_kind_mod          , only : CS=>SHR_KIND_CS
-    use med_kind_mod          , only : CL=>SHR_KIND_CL
-    use med_kind_mod          , only : R8=>SHR_KIND_R8
+    use med_kind_mod          , only : CX=>SHR_KIND_CX, CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, R8=>SHR_KIND_R8
     use med_internalstate_mod , only : compmed, compatm, compocn, compwav, compice
     use med_internalstate_mod , only : ncomps
     use med_internalstate_mod , only : coupling_mode
