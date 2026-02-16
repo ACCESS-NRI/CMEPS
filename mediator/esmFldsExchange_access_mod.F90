@@ -128,7 +128,7 @@ module esmFldsExchange_access_mod
       ! to atm: from ocn
       ! ---------------------------------------------------------------------
       allocate(S_flds(3))
-      S_flds = (/'So_t', 'So_u', 'So_v'/) ! sea_surface_temperature
+      S_flds = (/'So_t', 'So_u', 'So_v'/)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld_from(compocn, trim(fldname))
@@ -141,15 +141,15 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(9))
       S_flds = (/'Si_t', &
-                  'ia_aicen', &
-                  'ia_snown', &
-                  'ia_thikn', &
+                  'Si_ifrac_n', &
+                  'Si_vsno_n', &
+                  'Si_vice_n', &
                   'ia_itopt', &
                   'ia_itopk', &
                   'ia_pndfn', &
                   'ia_pndtn', &
                   'sstfrz' &
-               /) ! sea_surface_temperature
+               /)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld_from(compice, trim(fldname))
@@ -165,8 +165,8 @@ module esmFldsExchange_access_mod
       ! to ocn: state fields
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
-      S_flds = (/'Sa_pslv', & ! inst_zonal_wind_height10m
-                  'So_duu10n' /) ! inst_temp_height_surface
+      S_flds = (/'Sa_pslv', &
+                  'So_duu10n' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -207,9 +207,9 @@ module esmFldsExchange_access_mod
 
       ! from ice
       allocate(F_flds(6, 2))
-      F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
+      F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/) ! salt flux sea-ice to ocean
       F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
-      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
+      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/) ! melt water flux sea-ice to ocean
       F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
       F_flds(5,:) = (/'Fioi_taux', 'Foxx_taux'/)
       F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! surface stress sea-ice to ocean
@@ -230,7 +230,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(S_flds(10))
+      allocate(S_flds(8))
       S_flds = (/'Sa_z', &
                   'Sa_u', &
                   'Sa_v', &
@@ -238,9 +238,7 @@ module esmFldsExchange_access_mod
                   'Sa_tbot', &
                   'Sa_pbot', &
                   'Sa_dens', &
-                  'Sa_ptem', &
-                  'um_icesth', &
-                  'um_icenth' /)
+                  'Sa_ptem'/)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -250,13 +248,13 @@ module esmFldsExchange_access_mod
 
       ! from ocn
       allocate(S_flds(7))
-      S_flds = (/'So_dhdx', & 
+      S_flds = (/'So_dhdx', &
                  'So_dhdy', &
-                 'So_t', & 
-                 'So_s', & 
-                 'So_u', & 
-                 'So_v', & 
-                 'Fioo_q' /) 
+                 'So_t', &
+                 'So_s', &
+                 'So_u', &
+                 'So_v', &
+                 'Fioo_q' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compocn, trim(fldname))
@@ -296,7 +294,7 @@ module esmFldsExchange_access_mod
 
       call addfld_to(compice, 'Faxa_rain')
       call addfld_to(compice, 'Faxa_snow')
-      
+
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
     end subroutine esmFldsExchange_access_advt
@@ -401,23 +399,21 @@ module esmFldsExchange_access_mod
 
       call addmap_from(compice, 'sstfrz', compatm, mapconsf, 'none', 'unset')
       call addmrg_to(compatm, 'sstfrz', mrg_from=compice, mrg_fld='sstfrz', mrg_type='copy')
-      
+
       allocate(S_flds(7))
-      S_flds = (/'ia_aicen', &
-                  'ia_snown', &
-                  'ia_thikn', &
+      S_flds = (/'Si_ifrac_n', &
+                  'Si_vsno_n', &
+                  'Si_vice_n', &
                   'ia_itopt', &
                   'ia_itopk', &
                   'ia_pndfn', &
-                  'ia_pndtn'/) ! sea_surface_temperature
+                  'ia_pndtn'/)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
         call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
       end do
       deallocate(S_flds)
-      ! call addmap(fldListFr(compice)%flds, 'Si_t', compatm, mapconsf, 'ifrac', 'unset')
-      ! call addmrg(fldListTo(compatm)%flds, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
 
       !=====================================================================
       ! FIELDS TO OCEAN (compocn)
@@ -471,7 +467,7 @@ module esmFldsExchange_access_mod
       deallocate(F_flds)
 
       ! precip
-      call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset') ! TODO: weight by ocean fraction
+      call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset')
       call addmap_from(compatm, 'Faxa_rainl', compocn, mapconsf, 'one', 'unset')
       call addmrg_to(compocn, 'Faxa_rain' , mrg_from=compatm, mrg_fld='Faxa_rainc:Faxa_rainl', &
                mrg_type='sum_with_weights', mrg_fracname='ofrac')
@@ -521,7 +517,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(S_flds(10))
+      allocate(S_flds(8))
       S_flds = (/'Sa_z', &
                   'Sa_u', &
                   'Sa_v', &
@@ -529,9 +525,7 @@ module esmFldsExchange_access_mod
                   'Sa_tbot', &
                   'Sa_pbot', &
                   'Sa_dens', &
-                  'Sa_ptem', &
-                  'um_icesth', &
-                  'um_icenth' /)
+                  'Sa_ptem' /)
 
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))

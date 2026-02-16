@@ -58,8 +58,8 @@ contains
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (trim(coupling_mode) == 'access') then
-      call med_phases_post_atm_custom_access(gcomp, rc)
+    if (trim(coupling_mode) == 'access-esm') then
+      call med_phases_post_atm_time_travelling_ice(gcomp, rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
@@ -133,7 +133,14 @@ contains
 
   end subroutine med_phases_post_atm
 
-  subroutine med_phases_post_atm_custom_access(gcomp, rc)
+  subroutine med_phases_post_atm_time_travelling_ice(gcomp, rc)
+
+   !---------------------------------------
+   ! Scale atmosphere to sea-ice fluxes by the current ice fraction prior to regridding to the sea-ice grid.
+   ! This converts the fluxes from averages over sea-ice+ocean area to averages over the sea-ice area,
+   ! and ensures conservation.
+   !---------------------------------------
+
    use med_kind_mod          , only : CX=>SHR_KIND_CX, CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, R8=>SHR_KIND_R8
    use med_internalstate_mod , only : compocn, compatm, compice, coupling_mode
    use med_internalstate_mod , only : InternalState
@@ -152,7 +159,7 @@ contains
    real(R8), pointer   :: ice_frac_cat_ptr(:, :), ice_flux_cat_ptr(:, :)
    type(ESMF_Field) :: ice_frac_cat, ice_flux_cat
    integer             :: lsize1, lsize2, i, j, n
-   character(len=*), parameter    :: subname='(med_phases_post_atm_custom_access)'
+   character(len=*), parameter    :: subname='(med_phases_post_atm_time_travelling_ice)'
    character(len=CS) :: fld_names(4)
    !---------------------------------------
 
@@ -166,8 +173,10 @@ contains
    ! Get the internal state
    nullify(is_local%wrap)
    call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
+   if (ChkErr(rc,__LINE__,u_FILE_u)) return
    
-   call ESMF_FieldBundleGet(is_local%wrap%FBImp(compice, compatm), fieldName='ia_aicen', field=ice_frac_cat, rc=rc)
+   call ESMF_FieldBundleGet(is_local%wrap%FBImp(compice, compatm), fieldName='Si_ifrac_n', field=ice_frac_cat, rc=rc)
+   if (ChkErr(rc,__LINE__,u_FILE_u)) return
    call ESMF_FieldGet(ice_frac_cat, farrayptr=ice_frac_cat_ptr)
 
    lsize1 = size(ice_frac_cat_ptr, dim=1)
@@ -182,6 +191,7 @@ contains
    do n = 1,size(fld_names)
       
       call ESMF_FieldBundleGet(is_local%wrap%FBImp(compatm, compatm), fieldName=trim(fld_names(n)), field=ice_flux_cat, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
       call ESMF_FieldGet(ice_flux_cat, farrayptr=ice_flux_cat_ptr)
 
       do j = 1,lsize2
@@ -199,6 +209,6 @@ contains
    end if
    call t_stopf('MED:'//subname)
 
-  end subroutine med_phases_post_atm_custom_access
+  end subroutine med_phases_post_atm_time_travelling_ice
 
 end module med_phases_post_atm_mod
