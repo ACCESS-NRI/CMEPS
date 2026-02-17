@@ -148,6 +148,7 @@ contains
    use ESMF , only : ESMF_FieldGet, ESMF_Field
    use ESMF , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
    use med_constants_mod     , only : dbug_flag => med_constants_dbug_flag
+   use med_utils_mod         , only : chkerr    => med_utils_ChkErr
    use perf_mod              , only : t_startf, t_stopf
 
    ! input/output variables
