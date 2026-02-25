@@ -144,10 +144,10 @@ module esmFldsExchange_access_mod
                   'Si_ifrac_n', &
                   'Si_vsno_n', &
                   'Si_vice_n', &
-                  'ia_itopt', &
-                  'ia_itopk', &
-                  'ia_pndfn', &
-                  'ia_pndtn', &
+                  'Si_topt', &
+                  'Si_topk', &
+                  'Si_pndf_n', &
+                  'Si_pndt_n', &
                   'sstfrz' &
                /)
       do n = 1,size(S_flds)
@@ -272,11 +272,11 @@ module esmFldsExchange_access_mod
       F_flds(3,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
       F_flds(4,:) = (/'Faxa_swndf', 'Faxa_swndf'/)
       F_flds(5,:) = (/'Faxa_lwdn', 'Faxa_lwdn'/)
-      F_flds(6,:) = (/'pen_rad', 'pen_rad'/)
-      F_flds(7,:) = (/'topmelt', 'topmelt'/)
-      F_flds(8,:) = (/'botmelt', 'botmelt'/)
-      F_flds(9,:) = (/'tstar_sice', 'tstar_sice'/)
-      F_flds(10,:) = (/'sublim', 'sublim'/)
+      F_flds(6,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
+      F_flds(7,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
+      F_flds(8,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
+      F_flds(9,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
+      F_flds(10,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
       F_flds(11,:) = (/'Foxx_sen', 'Foxx_sen'/)
       F_flds(12,:) = (/'Faxa_swdn', 'Faxa_swdn'/)
       do n = 1,size(F_flds,1)
@@ -404,10 +404,10 @@ module esmFldsExchange_access_mod
       S_flds = (/'Si_ifrac_n', &
                   'Si_vsno_n', &
                   'Si_vice_n', &
-                  'ia_itopt', &
-                  'ia_itopk', &
-                  'ia_pndfn', &
-                  'ia_pndtn'/)
+                  'Si_topt', &
+                  'Si_topk', &
+                  'Si_pndf_n', &
+                  'Si_pndt_n'/)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
@@ -568,11 +568,11 @@ module esmFldsExchange_access_mod
 
       ! from atm
       allocate(F_flds(12, 2))
-      F_flds(1,:) = (/'pen_rad', 'pen_rad'/)
-      F_flds(2,:) = (/'topmelt', 'topmelt'/)
-      F_flds(3,:) = (/'botmelt', 'botmelt'/)
-      F_flds(4,:) = (/'tstar_sice', 'tstar_sice'/)
-      F_flds(5,:) = (/'sublim', 'sublim'/)
+      F_flds(1,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
+      F_flds(2,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
+      F_flds(3,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
+      F_flds(4,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
+      F_flds(5,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
       F_flds(6,:) = (/'Faxa_swvdr ', 'Faxa_swvdr '/)
       F_flds(7,:) = (/'Faxa_swndr ', 'Faxa_swndr '/)
       F_flds(8,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
