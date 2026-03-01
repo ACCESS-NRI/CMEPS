@@ -493,12 +493,10 @@ contains
     end if
 
     nullify(is_local%wrap)
-    call ESMF_LogWrite(trim(subname)//": tryign to access gcomp", ESMF_LOGMSG_INFO)
 
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call ESMF_LogWrite(trim(subname)//": tryign to get gcomp", ESMF_LOGMSG_INFO)
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     ! -------------------------------
@@ -521,8 +519,6 @@ contains
       if (chkerr(rc,__LINE__,u_FILE_u)) return
       call ESMF_FieldBundleAdd(FBrof_pattern, (/field_l/), rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-      ! call med_methods_FB_Field_diagnose(FBrof_pattern, trim(fields_to_spread_runoff(n)), rc=rc)
-      ! if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end do
 
     ! read spreading from file
@@ -531,8 +527,7 @@ contains
     endif
     call med_io_read(rof2ocn_ice_spread, vm, FBrof_pattern, pre='pattern', ungridded_nc=.true.,  rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
-    ! call med_methods_FB_Field_diagnose(FBrof_pattern, 'Forr_rofi', rc)
-    ! if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     areas => is_local%wrap%mesh_info(comprof)%areas
     lats => is_local%wrap%mesh_info(comprof)%lats
 
@@ -565,12 +560,6 @@ contains
         call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
             reduceflag=ESMF_REDUCE_SUM, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
-        ! if (maintask .and. dbug_flag > dbug_threshold) then
-        if (maintask) then
-          write(logunit,'(a)') subname//' Correction: '//trim(fields_to_spread_runoff(n))
-          write(logunit,'(a,e27.17)') subname//' Correction_sh = ', global_sh(1)
-          write(logunit,'(a,e27.17)') subname//' Correction_nh = ', global_nh(1)
-        end if
 
         ! adjust correction so that it's sums to 1 in each hemisphere
         do i = 1, size(runoff_flux)
@@ -602,14 +591,9 @@ contains
         call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
             reduceflag=ESMF_REDUCE_SUM, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
-        ! if (maintask .and. dbug_flag > dbug_threshold) then
-        if (maintask) then
-          write(logunit,'(a)') subname//' Correction: '//trim(fields_to_spread_runoff(n))
-          write(logunit,'(a,e27.17)') subname//' Correction_sh = ', global_sh(1)
-          write(logunit,'(a,e27.17)') subname//' Correction_nh = ', global_nh(1)
-        end if
 
         rof2ocn_spread(:,month) = runoff_flux
+
       enddo ! month
     enddo
 
@@ -640,10 +624,6 @@ contains
     real(r8)            :: local_sh(1), global_sh(1) !Antarctic (frozen) runoff
     real(r8)            :: local_nh(1), global_nh(1) !Greenland (frozen) runoff
     real(r8)            :: global_sum
-    ! real(r8)            :: multiplier
-    ! real(r8)            :: local_positive_final(1), global_positive_final(1)
-    ! real(r8)            :: local_negative_final(1), global_negative_final(1)
-    ! real(r8)            :: global_sum_final
     integer :: n, mm
 
     integer, parameter :: dbug_threshold = 20 ! threshold for writing debug information in this subroutine
@@ -693,8 +673,7 @@ contains
     call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
          reduceflag=ESMF_REDUCE_SUM, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    ! if (maintask .and. dbug_flag > dbug_threshold) then
-    if (maintask) then
+    if (maintask .and. dbug_flag > dbug_threshold) then
       write(logunit,'(a)') subname//' Before correction: '//trim(field_name)
       write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sh(1)
       write(logunit,'(a,e27.17)') subname//' global_nh = ', global_nh(1)
@@ -731,8 +710,7 @@ contains
     call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
          reduceflag=ESMF_REDUCE_SUM, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    ! if (maintask .and. dbug_flag > dbug_threshold) then
-    if (maintask) then
+    if (maintask .and. dbug_flag > dbug_threshold) then
       write(logunit,'(a)') subname//' After correction: '//trim(field_name)
       write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sh(1)
       write(logunit,'(a,e27.17)') subname//' global_nh = ', global_nh(1)
