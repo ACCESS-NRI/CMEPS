@@ -459,6 +459,7 @@ contains
   subroutine med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
     !---------------------------------------------------------------
     use med_io_mod       , only : med_io_read
+    use, intrinsic :: ieee_arithmetic, only : ieee_is_nan
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
