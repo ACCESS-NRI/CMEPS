@@ -197,7 +197,7 @@ contains
 
       do j = 1,lsize2
          do i = 1,lsize1
-            if (ice_frac_cat_ptr(i, j) > 0.0) then
+            if (ice_frac_cat_ptr(i, j) > 1e-11) then
                ice_flux_cat_ptr(i, j) = ice_flux_cat_ptr(i, j) / ice_frac_cat_ptr(i, j)
             end if
          end do
