@@ -472,7 +472,7 @@ contains
     type(ESMF_field) :: field_l                ! climatology, 12 months
     real(r8)            :: glob_area_inv
     real(r8), pointer   :: areas(:), lats(:)
-    real(r8), pointer     :: rof2ocn_spread(:,:)
+    real(r8), pointer   :: rof2ocn_spread(:,:)
     real(r8), pointer   :: runoff_flux(:)  ! temporary 1d pointer
     real(r8)            :: local_sh(1), global_sh(1) !Antarctic (frozen) runoff
     real(r8)            :: local_nh(1), global_nh(1) !Greenland (frozen) runoff
@@ -546,7 +546,7 @@ contains
         ! calculate sum of spreading 
         local_sh(1) = 0.0_r8
         local_nh(1) = 0.0_r8
-        do i = 1, size(rof2ocn_spread, dim = 1)
+        do i = 1, size(runoff_flux)
           if (lats(i) < 0.0_r8) then
             local_sh(1) = local_sh(1) + areas(i) * runoff_flux(i)
           else
@@ -563,16 +563,11 @@ contains
 
         ! adjust correction so that it's sums to 1 in each hemisphere
         do i = 1, size(runoff_flux)
-          if (ieee_is_nan(runoff_flux(i))) then
-            write(logunit,'(a,e27.17)') subname//' is nan = ', lats(i)
+          if (lats(i) < 0.0_r8) then
+            runoff_flux(i) = runoff_flux(i) / global_sh(1)
+          else
+            runoff_flux(i) = runoff_flux(i) / global_nh(1)
           end if
-          if (runoff_flux(i) .ne. 0) then
-            if (lats(i) < 0.0_r8) then
-              runoff_flux(i) = runoff_flux(i) / global_sh(1)
-            else
-              runoff_flux(i) = runoff_flux(i) / global_nh(1)
-            end if
-          endif
         end do
 
         local_sh(1) = 0.0_r8

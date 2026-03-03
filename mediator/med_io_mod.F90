@@ -1669,7 +1669,11 @@ contains
                 call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_INFO, rc=rc)
                 fldptr2 = 0.0_r8
              else
-                call pio_setframe(pioid, varid, lframe)
+                if (present(frame)) then
+                   call pio_seterrorhandling(pioid,PIO_INTERNAL_ERROR)
+                   call pio_setframe(pioid, varid, lframe)
+                   call pio_seterrorhandling(pioid,PIO_BCAST_ERROR)
+                endif
                 call pio_read_darray(pioid, varid, iodesc, fldptr2, rcode)
                 if (rcode /= pio_noerr) then
                    call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
