@@ -184,10 +184,10 @@ contains
    lsize2 = size(ice_frac_cat_ptr, dim=2)
 
    fld_names = [character(len=CS) :: &
-   'topmelt', &
-   'botmelt', &
-   'sublim', &
-   'pen_rad']
+   'Faxa_melthtop_n', &
+   'Faxa_condtop_n', &
+   'Faxa_sublim_n', &
+   'Faxa_swpen_n']
    
    do n = 1,size(fld_names)
       
