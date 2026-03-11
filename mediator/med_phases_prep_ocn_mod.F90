@@ -20,10 +20,12 @@ module med_phases_prep_ocn_mod
   use med_methods_mod       , only : FB_copy       => med_methods_FB_copy
   use med_methods_mod       , only : FB_reset      => med_methods_FB_reset
   use med_methods_mod       , only : FB_check_for_nans => med_methods_FB_check_for_nans
+  use med_methods_mod       , only : fldbun_getdata1d => med_methods_FB_getdata1d
   use med_field_info_mod    , only : med_field_info_type, med_field_info_array_from_state
   use esmFlds               , only : med_fldList_GetfldListTo, med_fldlist_type
-  use med_internalstate_mod , only : compocn, compatm, compice, coupling_mode
+  use med_internalstate_mod , only : compocn, compatm, compice, compmed, coupling_mode
   use perf_mod              , only : t_startf, t_stopf
+  use shr_log_mod           , only : shr_log_error
 
   implicit none
   private
@@ -33,6 +35,8 @@ module med_phases_prep_ocn_mod
   public :: med_phases_prep_ocn_avg    ! called from run sequence
 
   private :: med_phases_prep_ocn_custom
+
+  logical :: scale_global_freshwater_to_zero
 
   character(*), parameter :: u_FILE_u  = &
        __FILE__
@@ -44,6 +48,7 @@ contains
   subroutine med_phases_prep_ocn_init(gcomp, rc)
 
     use ESMF            , only : ESMF_GridComp, ESMF_SUCCESS
+    use NUOPC                 , only : NUOPC_CompAttributeGet
     use med_methods_mod , only : FB_Init  => med_methods_FB_init
 
     ! input/output variables
@@ -53,6 +58,8 @@ contains
     ! local variables
     type(InternalState) :: is_local
     type(med_field_info_type), allocatable :: field_info_array(:)
+    character(CS)     :: cvalue
+    logical           :: isPresent, isSet
     character(len=*),parameter  :: subname=' (med_phases_prep_ocn_init) '
     !---------------------------------------
 
@@ -62,6 +69,17 @@ contains
     nullify(is_local%wrap)
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (chkErr(rc,__LINE__,u_FILE_u)) return
+
+    call NUOPC_CompAttributeGet(gcomp, name="scale_global_freshwater_to_zero", &
+      value=cvalue, isPresent=isPresent, isSet=isSet, rc=rc)
+    if (isPresent .and. isSet) then
+       read(cvalue,*) scale_global_freshwater_to_zero
+    else
+       scale_global_freshwater_to_zero = .false.
+    end if
+    if (maintask) then
+       write(logunit,'(a,l7)') trim(subname) //' scale_global_freshwater_to_zero = ', scale_global_freshwater_to_zero
+    end if
 
     if (maintask) then
        write(logunit,'(a)') trim(subname)//' initializing ocean export accumulation FB for '
@@ -164,6 +182,13 @@ contains
     !---------------------------------------
     !--- custom calculations
     !---------------------------------------
+
+    ! Scale global water balance to zero (for running with datm)
+    ! This changes Faxa_rain and Faxa_snow, so run before hrain and hsnow are calculated
+    if (scale_global_freshwater_to_zero) then
+      call med_phases_prep_ocn_balance_freshwater(gcomp, rc)
+    endif
+
     ! compute enthalpy associated with rain, snow, condensation and liquid river & glc runoff
     ! the sea-ice model already accounts for the enthalpy flux (as part of melth), so
     ! enthalpy from meltw **is not** included below
@@ -663,5 +688,195 @@ contains
     call t_stopf('MED:'//subname)
 
   end subroutine med_phases_prep_ocn_custom
+
+  subroutine med_phases_prep_ocn_balance_freshwater(gcomp, rc)
+
+    !---------------------------------------
+    ! balance global freshwater to zero, by scaling precip such that
+    ! the sum of precip, runoff and evap is zero
+    !---------------------------------------
+
+    use ESMF , only : ESMF_GridComp, ESMF_VMAllreduce, ESMF_REDUCE_SUM
+    use ESMF , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
+    use ESMF , only : ESMF_GridCompGet, ESMF_VM
+    use med_constants_mod     , only : shr_const_pi
+
+    ! input/output variables
+    type(ESMF_GridComp)  :: gcomp
+    integer, intent(inout) :: rc
+
+        ! local variables
+    type(InternalState) :: is_local
+    type(ESMF_VM) :: vm
+    integer             :: i
+    real(r8)            :: glob_area_inv
+    real(r8), pointer   :: tocn(:)
+    real(r8), pointer   :: rain(:), snow(:), rain_si(:), snow_si(:)
+    real(r8), pointer   :: evap_o(:), evap_si(:)
+    real(r8), pointer   :: rofl(:), rofi(:)
+    real(r8)            :: local_sum(1), global_fw_sum(1) !Freshwater sum
+    real(r8)            :: global_precip_sum(1) !Freshwater precip sum
+    real(r8)            :: precip_fact
+
+    real(r8), pointer   :: med_areas(:), ocn_areas(:), ice_areas(:)
+    real(r8), pointer   :: ifrac(:)  ! ice fraction in ocean grid cell
+    real(r8), pointer   :: ofrac(:)  ! non-ice fraction nin ocean grid cell
+    logical, parameter  :: debug = .false.
+    character(len=*), parameter    :: subname='(med_phases_prep_ocn_balance_freshwater)'
+    !---------------------------------------
+
+    call t_startf('MED:'//subname)
+    if (dbug_flag > 20) then
+       call ESMF_LogWrite(subname//' called', ESMF_LOGMSG_INFO)
+    end if
+    rc = ESMF_SUCCESS
+
+    local_sum(1) = 0
+
+    call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ! --- Get the internal state
+    nullify(is_local%wrap)
+    call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ocn_areas => is_local%wrap%mesh_info(compocn)%areas
+    call fldbun_getdata1d(is_local%wrap%FBfrac(compocn), 'ofrac', ofrac, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ice_areas => is_local%wrap%mesh_info(compice)%areas
+    call fldbun_getdata1d(is_local%wrap%FBfrac(compice), 'ifrac', ifrac, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    if (FB_fldchk(is_local%wrap%FBExp(compocn), 'Faxa_rain'      , rc=rc) .and. &
+        FB_fldchk(is_local%wrap%FBExp(compocn), 'Faxa_snow'      , rc=rc) .and. &
+        FB_fldchk(is_local%wrap%FBExp(compocn), 'Foxx_evap'      , rc=rc) .and. &
+        FB_fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofl'      , rc=rc) .and. &
+        FB_fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofi'      , rc=rc)) then
+
+      call FB_GetFldPtr(is_local%wrap%FBExp(compocn), 'Faxa_rain' , rain, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      call FB_GetFldPtr(is_local%wrap%FBExp(compocn), 'Foxx_evap' , evap_o, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      call FB_GetFldPtr(is_local%wrap%FBExp(compocn), 'Faxa_snow' , snow, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      call FB_GetFldPtr(is_local%wrap%FBExp(compocn), 'Foxx_rofl' , rofl, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      call FB_GetFldPtr(is_local%wrap%FBExp(compocn), 'Foxx_rofi' , rofi, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      do i = 1, size(rain)
+         ! rain and snow are already scaled by ofrac
+         ! see https://github.com/ESCOMP/CMEPS/blob/1f8d26a23be9809848146b1334ffa55d1b9d7fa1/mediator/esmFldsExchange_cesm_mod.F90#L1801-L1802
+        local_sum(1) = local_sum(1) + ocn_areas(i)*(rain(i) + snow(i))
+      end do
+
+      ! If cice IS PRESENT
+      if (is_local%wrap%comp_present(compice)) then
+
+        call fldbun_getdata1d(is_local%wrap%FBfrac(compice), 'ifrac', ifrac, rc=rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+        call FB_GetFldPtr(is_local%wrap%FBExp(compice), 'Faxa_rain' , rain_si, rc=rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+        call FB_GetFldPtr(is_local%wrap%FBExp(compice), 'Faxa_snow' , snow_si, rc=rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+        do i = 1, size(rain)
+         ! rain and snow to sea ice are grid cell area fluxes (see https://github.com/ESCOMP/CMEPS/blob/1f8d26a23be9809848146b1334ffa55d1b9d7fa1/mediator/esmFldsExchange_cesm_mod.F90#L2730-L2731)
+         ! therefore weight by ifrac when calculating global sum
+         local_sum(1) = local_sum(1) + ice_areas(i)*ifrac(i)*(rain_si(i) + snow_si(i))
+        end do
+      endif
+
+      call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_precip_sum, count=1, &
+        reduceflag=ESMF_REDUCE_SUM, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      if (maintask .and. debug) then
+        write(logunit,'(a,f21.13)') &
+          '(med_phases_prep_ocn_balance_freshwater): global_precip_sum ',&
+          global_precip_sum/(4.0_r8*shr_const_pi)
+      endif
+
+      do i = 1, size(rain)
+         local_sum(1) = local_sum(1) + ocn_areas(i)*(ofrac(i)*evap_o(i) + rofl(i) + rofi(i))
+      end do
+
+      if (is_local%wrap%comp_present(compice)) then
+        call FB_GetFldPtr(is_local%wrap%FBImp(compice,compice), 'Faii_evap' , evap_si, rc=rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+        do i = 1, size(rain)
+          local_sum(1) = local_sum(1) + ice_areas(i)*ifrac(i)*evap_si(i)
+        end do
+      endif
+
+      call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_fw_sum, count=1, &
+        reduceflag=ESMF_REDUCE_SUM, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+      if (maintask .and. debug) then
+        write(logunit,'(a,f21.13)') &
+          '(med_phases_prep_ocn_balance_freshwater): global_fw_sum ',&
+          global_fw_sum/(4.0_r8*shr_const_pi)
+      endif
+
+      precip_fact = 1 - (global_fw_sum(1)/global_precip_sum(1))
+
+      if (maintask .and. debug) then
+        write(logunit,'(a,f21.13)') &
+          '(med_phases_prep_ocn_balance_freshwater): Scaling rain & snow by non-unity precip_fact ',&
+          precip_fact
+      endif
+
+      rain(:) = precip_fact * rain(:)
+      snow(:) = precip_fact * snow(:)
+      if (is_local%wrap%comp_present(compice)) then
+        rain_si(:) = precip_fact * rain_si(:)
+        snow_si(:) = precip_fact * snow_si(:)
+      endif
+
+      if (debug) then
+        !check new global_fw_sum
+        local_sum(1) = 0
+        do i = 1, size(rain)
+          local_sum(1) = local_sum(1) + ocn_areas(i)*(rain(i) + snow(i) + ofrac(i) * evap_o(i) + rofl(i) + rofi(i))
+        end do
+
+        if (is_local%wrap%comp_present(compice)) then
+          do i = 1, size(rain)
+            local_sum(1) = local_sum(1) + ice_areas(i)*ifrac(i)*(rain_si(i) + snow_si(i) + evap_si(i))
+          end do
+        endif
+
+        call ESMF_VMAllreduce(is_local%wrap%vm, senddata=local_sum, recvdata=global_fw_sum, count=1, &
+          reduceflag=ESMF_REDUCE_SUM, rc=rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+        if (maintask) then
+          write(logunit,'(a,f21.13)') &
+            '(med_phases_prep_ocn_balance_freshwater): global_fw_sum ',&
+            global_fw_sum/(4.0_r8*shr_const_pi)
+        endif
+      endif
+
+    else
+      call shr_log_error(trim(subname)//": ERROR some fields for ocn_balance_freshwater are missing ", &
+            line=__LINE__, file=u_FILE_u, rc=rc)
+       return
+    endif
+
+    if (dbug_flag > 20) then
+      call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
+    end if
+    call t_stopf('MED:'//subname)
+
+  end subroutine med_phases_prep_ocn_balance_freshwater
 
 end module med_phases_prep_ocn_mod
