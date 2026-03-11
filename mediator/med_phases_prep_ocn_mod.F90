@@ -805,7 +805,7 @@ contains
       endif
 
       do i = 1, size(rain)
-         local_sum(1) = local_sum(1) + ocn_areas(i)*(ofrac(i)*evap_o(i) + rofl(i) + rofi(i))
+         local_sum(1) = local_sum(1) + ocn_areas(i)*(evap_o(i) + rofl(i) + rofi(i))
       end do
 
       if (is_local%wrap%comp_present(compice)) then
@@ -846,7 +846,7 @@ contains
         !check new global_fw_sum
         local_sum(1) = 0
         do i = 1, size(rain)
-          local_sum(1) = local_sum(1) + ocn_areas(i)*(rain(i) + snow(i) + ofrac(i) * evap_o(i) + rofl(i) + rofi(i))
+          local_sum(1) = local_sum(1) + ocn_areas(i)*(rain(i) + snow(i) + evap_o(i) + rofl(i) + rofi(i))
         end do
 
         if (is_local%wrap%comp_present(compice)) then
