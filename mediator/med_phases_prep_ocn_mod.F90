@@ -799,7 +799,7 @@ contains
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
       if (maintask .and. debug) then
-        write(logunit,'(a,f21.13)') &
+        write(logunit,'(a,ES26.18)') &
           '(med_phases_prep_ocn_balance_freshwater): global_precip_sum ',&
           global_precip_sum/(4.0_r8*shr_const_pi)
       endif
@@ -822,15 +822,18 @@ contains
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
       if (maintask .and. debug) then
-        write(logunit,'(a,f21.13)') &
+        write(logunit,'(a,ES26.18)') &
           '(med_phases_prep_ocn_balance_freshwater): global_fw_sum ',&
           global_fw_sum/(4.0_r8*shr_const_pi)
       endif
 
       precip_fact = 1 - (global_fw_sum(1)/global_precip_sum(1))
 
+      ! to avoid issues with machine precision, round to 15 decimal places
+      precip_fact = anint(precip_fact * 1d15) / 1d15
+
       if (maintask .and. debug) then
-        write(logunit,'(a,f21.13)') &
+        write(logunit,'(a,ES26.18)') &
           '(med_phases_prep_ocn_balance_freshwater): Scaling rain & snow by non-unity precip_fact ',&
           precip_fact
       endif
@@ -860,7 +863,7 @@ contains
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
         if (maintask) then
-          write(logunit,'(a,f21.13)') &
+          write(logunit,'(a,ES26.18)') &
             '(med_phases_prep_ocn_balance_freshwater): global_fw_sum ',&
             global_fw_sum/(4.0_r8*shr_const_pi)
         endif
