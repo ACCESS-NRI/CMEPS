@@ -115,14 +115,14 @@ module esmFldsExchange_access_mod
       ! to med: masks from components
       !----------------------------------------------------------
       call addfld_from(compocn, 'So_omask')
-      call addfld_from(compice, 'Si_imask')
+      ! call addfld_from(compice, 'Si_imask') COMMENTED OUT FOR REGIONAL
 
       !=====================================================================
       ! FIELDS TO ATMOSPHERE
       !=====================================================================
 
       call addfld_to(compatm, 'So_ofrac')
-      call addfld_to(compatm, 'Si_ifrac')
+      ! call addfld_to(compatm, 'Si_ifrac') COMMENTED OUT FOR REGIONAL
 
       ! ---------------------------------------------------------------------
       ! to atm: from ocn
@@ -139,23 +139,23 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       ! to atm: from ice
       ! ---------------------------------------------------------------------
-      allocate(S_flds(9))
-      S_flds = (/'Si_t', &
-                  'Si_ifrac_n', &
-                  'Si_vsno_n', &
-                  'Si_vice_n', &
-                  'Si_topt', &
-                  'Si_topk', &
-                  'Si_pndf_n', &
-                  'Si_pndt_n', &
-                  'sstfrz' &
-               /)
-      do n = 1,size(S_flds)
-        fldname = trim(S_flds(n))
-        call addfld_from(compice, trim(fldname))
-        call addfld_to(compatm, trim(fldname))
-      end do
-      deallocate(S_flds)
+      ! allocate(S_flds(9)) COMMENTED OUT FOR REGIONAL
+      ! S_flds = (/'Si_t', &
+      !             'Si_ifrac_n', &
+      !             'Si_vsno_n', &
+      !             'Si_vice_n', &
+      !             'Si_topt', &
+      !             'Si_topk', &
+      !             'Si_pndf_n', &
+      !             'Si_pndt_n', &
+      !             'sstfrz' &
+      !          /)
+      ! do n = 1,size(S_flds)
+      !   fldname = trim(S_flds(n))
+      !   call addfld_from(compice, trim(fldname))
+      !   call addfld_to(compatm, trim(fldname))
+      ! end do
+      ! deallocate(S_flds)
 
       !=====================================================================
       ! FIELDS TO OCEAN (compocn)
@@ -206,20 +206,20 @@ module esmFldsExchange_access_mod
       call addfld_from(compatm, 'Faxa_snowc')
 
       ! from ice
-      allocate(F_flds(6, 2))
-      F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/) ! salt flux sea-ice to ocean
-      F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
-      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/) ! melt water flux sea-ice to ocean
-      F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
-      F_flds(5,:) = (/'Fioi_taux', 'Foxx_taux'/)
-      F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! surface stress sea-ice to ocean
-      do n = 1,size(F_flds,1)
-         fldname1 = trim(F_flds(n,1))
-         fldname2 = trim(F_flds(n,2))
-         call addfld_from(compice, trim(fldname1))
-         call addfld_to(compocn, trim(fldname2))
-      end do
-      deallocate(F_flds)
+      ! allocate(F_flds(6, 2)) COMMENTED OUT FOR REGIONAL
+      ! F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/) ! salt flux sea-ice to ocean
+      ! F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
+      ! F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/) ! melt water flux sea-ice to ocean
+      ! F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
+      ! F_flds(5,:) = (/'Fioi_taux', 'Foxx_taux'/)
+      ! F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! surface stress sea-ice to ocean
+      ! do n = 1,size(F_flds,1)
+      !    fldname1 = trim(F_flds(n,1))
+      !    fldname2 = trim(F_flds(n,2))
+      !    call addfld_from(compice, trim(fldname1))
+      !    call addfld_to(compocn, trim(fldname2))
+      ! end do
+      ! deallocate(F_flds)
 
       !=====================================================================
       ! FIELDS TO ICE (compice)
@@ -394,26 +394,26 @@ module esmFldsExchange_access_mod
       call addmap_from(compocn, 'So_v', compatm, mapconsf, 'ofrac', 'unset')
       call addmrg_to(compatm, 'So_v', mrg_from=compocn, mrg_fld='So_v', mrg_type='copy')
 
-      call addmap_from(compice, 'Si_t', compatm, mapconsd, 'ifrac', 'unset')
-      call addmrg_to(compatm, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
+      ! call addmap_from(compice, 'Si_t', compatm, mapconsd, 'ifrac', 'unset') COMMENTED OUT FOR REGIONAL
+      ! call addmrg_to(compatm, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
 
-      call addmap_from(compice, 'sstfrz', compatm, mapconsf, 'none', 'unset')
-      call addmrg_to(compatm, 'sstfrz', mrg_from=compice, mrg_fld='sstfrz', mrg_type='copy')
+      ! call addmap_from(compice, 'sstfrz', compatm, mapconsf, 'none', 'unset')
+      ! call addmrg_to(compatm, 'sstfrz', mrg_from=compice, mrg_fld='sstfrz', mrg_type='copy')
 
-      allocate(S_flds(7))
-      S_flds = (/'Si_ifrac_n', &
-                  'Si_vsno_n', &
-                  'Si_vice_n', &
-                  'Si_topt', &
-                  'Si_topk', &
-                  'Si_pndf_n', &
-                  'Si_pndt_n'/)
-      do n = 1,size(S_flds)
-        fldname = trim(S_flds(n))
-        call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
-        call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
-      end do
-      deallocate(S_flds)
+      ! allocate(S_flds(7))
+      ! S_flds = (/'Si_ifrac_n', &
+      !             'Si_vsno_n', &
+      !             'Si_vice_n', &
+      !             'Si_topt', &
+      !             'Si_topk', &
+      !             'Si_pndf_n', &
+      !             'Si_pndt_n'/)
+      ! do n = 1,size(S_flds)
+      !   fldname = trim(S_flds(n))
+      !   call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
+      !   call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
+      ! end do
+      ! deallocate(S_flds)
 
       !=====================================================================
       ! FIELDS TO OCEAN (compocn)
@@ -478,33 +478,33 @@ module esmFldsExchange_access_mod
                mrg_type='sum_with_weights', mrg_fracname='ofrac')
       
       ! from ice
-      call addmap_from(compice, 'Si_ifrac', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Si_ifrac', mrg_from=compice, mrg_fld='Si_ifrac', mrg_type='copy')
+      ! call addmap_from(compice, 'Si_ifrac', compocn, mapfcopy, 'unset', 'unset') COMMENTED OUT FOR REGIONAL
+      ! call addmrg_to(compocn, 'Si_ifrac', mrg_from=compice, mrg_fld='Si_ifrac', mrg_type='copy')
 
-      allocate(F_flds(3, 2))
-      F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
-      F_flds(2,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
-      F_flds(3,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
-      do n = 1,size(F_flds,1)
-         fldname1 = trim(F_flds(n,1))
-         fldname2 = trim(F_flds(n,2))
-         if (fldchk(is_local%wrap%FBExp(compocn), trim(fldname2), rc=rc) .and. &
-             fldchk(is_local%wrap%FBImp(compice, compice), trim(fldname1),rc=rc) &
-            ) then
-            call addmap_from(compice, trim(fldname1), compocn, mapfcopy, 'unset', 'unset')
-            call addmrg_to(compocn, trim(fldname2), mrg_from=compice, mrg_fld=trim(fldname1), mrg_type='copy')
-         end if
-      end do
-      deallocate(F_flds)
+      ! allocate(F_flds(3, 2))
+      ! F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
+      ! F_flds(2,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
+      ! F_flds(3,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
+      ! do n = 1,size(F_flds,1)
+      !    fldname1 = trim(F_flds(n,1))
+      !    fldname2 = trim(F_flds(n,2))
+      !    if (fldchk(is_local%wrap%FBExp(compocn), trim(fldname2), rc=rc) .and. &
+      !        fldchk(is_local%wrap%FBImp(compice, compice), trim(fldname1),rc=rc) &
+      !       ) then
+      !       call addmap_from(compice, trim(fldname1), compocn, mapfcopy, 'unset', 'unset')
+      !       call addmrg_to(compocn, trim(fldname2), mrg_from=compice, mrg_fld=trim(fldname1), mrg_type='copy')
+      !    end if
+      ! end do
+      ! deallocate(F_flds)
 
       ! momentum transfer
-      call addmap_from(compice, 'Fioi_taux', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Foxx_taux', mrg_from=compice, mrg_fld='Fioi_taux', mrg_type='merge', mrg_fracname='ifrac')
+      ! call addmap_from(compice, 'Fioi_taux', compocn, mapfcopy, 'unset', 'unset') COMMENTED OUT FOR REGIONAL
+      ! call addmrg_to(compocn, 'Foxx_taux', mrg_from=compice, mrg_fld='Fioi_taux', mrg_type='merge', mrg_fracname='ifrac')
       call addmap_from(compatm, 'Faxa_taux', compocn, mappatch, 'one', 'unset')
       call addmrg_to(compocn, 'Foxx_taux', mrg_from=compatm, mrg_fld='Faxa_taux', mrg_type='merge', mrg_fracname='ofrac')
 
-      call addmap_from(compice, 'Fioi_tauy', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compice, mrg_fld='Fioi_tauy', mrg_type='merge', mrg_fracname='ifrac')
+      ! call addmap_from(compice, 'Fioi_tauy', compocn, mapfcopy, 'unset', 'unset') COMMENTED OUT FOR REGIONAL
+      ! call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compice, mrg_fld='Fioi_tauy', mrg_type='merge', mrg_fracname='ifrac')
       call addmap_from(compatm, 'Faxa_tauy', compocn, mappatch, 'one', 'unset')
       call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compatm, mrg_fld='Faxa_tauy', mrg_type='merge', mrg_fracname='ofrac')
 
@@ -517,50 +517,50 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(S_flds(8))
-      S_flds = (/'Sa_z', &
-                  'Sa_u', &
-                  'Sa_v', &
-                  'Sa_shum', &
-                  'Sa_tbot', &
-                  'Sa_pbot', &
-                  'Sa_dens', &
-                  'Sa_ptem' /)
+      ! allocate(S_flds(8)) COMMENTED OUT FOR REGIONAL
+      ! S_flds = (/'Sa_z', &
+      !             'Sa_u', &
+      !             'Sa_v', &
+      !             'Sa_shum', &
+      !             'Sa_tbot', &
+      !             'Sa_pbot', &
+      !             'Sa_dens', &
+      !             'Sa_ptem' /)
 
-      do n = 1,size(S_flds)
-         fldname = trim(S_flds(n))
-         if (fldchk(is_local%wrap%FBExp(compice), trim(fldname),rc=rc) .and. &
-               fldchk(is_local%wrap%FBImp(compatm, compatm), trim(fldname),rc=rc) &
-            ) then
+      ! do n = 1,size(S_flds)
+      !    fldname = trim(S_flds(n))
+      !    if (fldchk(is_local%wrap%FBExp(compice), trim(fldname),rc=rc) .and. &
+      !          fldchk(is_local%wrap%FBImp(compatm, compatm), trim(fldname),rc=rc) &
+      !       ) then
 
-            call addmap_from(compatm, trim(fldname), compice, mapbilnr, 'one', 'unset')
-            call addmrg_to(compice, trim(fldname), mrg_from=compatm, mrg_fld=trim(fldname), mrg_type='copy')
+      !       call addmap_from(compatm, trim(fldname), compice, mapbilnr, 'one', 'unset')
+      !       call addmrg_to(compice, trim(fldname), mrg_from=compatm, mrg_fld=trim(fldname), mrg_type='copy')
 
-         end if
-      end do
-      deallocate(S_flds)
+      !    end if
+      ! end do
+      ! deallocate(S_flds)
 
-      ! from ocn
-      allocate(S_flds(7))
-      S_flds = (/'So_dhdx', & ! inst_zonal_wind_height10m
-                 'So_dhdy', & ! inst_merid_wind_height10m
-                 'So_t ', & ! inst_temp_height2m
-                 'So_s ', & ! inst_spec_humid_height2m
-                 'So_u', & ! Sa_pslv
-                 'So_v', & ! Sa_pslv
-                 'Fioo_q' /) ! inst_temp_height_surface
-      do n = 1,size(S_flds)
-         fldname = trim(S_flds(n))
-         if (fldchk(is_local%wrap%FBExp(compice),trim(fldname),rc=rc) .and. &
-             fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname),rc=rc) &
-            ) then
+      ! ! from ocn
+      ! allocate(S_flds(7))
+      ! S_flds = (/'So_dhdx', & ! inst_zonal_wind_height10m
+      !            'So_dhdy', & ! inst_merid_wind_height10m
+      !            'So_t ', & ! inst_temp_height2m
+      !            'So_s ', & ! inst_spec_humid_height2m
+      !            'So_u', & ! Sa_pslv
+      !            'So_v', & ! Sa_pslv
+      !            'Fioo_q' /) ! inst_temp_height_surface
+      ! do n = 1,size(S_flds)
+      !    fldname = trim(S_flds(n))
+      !    if (fldchk(is_local%wrap%FBExp(compice),trim(fldname),rc=rc) .and. &
+      !        fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname),rc=rc) &
+      !       ) then
 
-            call addmap_from(compocn, trim(fldname), compice, mapfcopy, 'unset', 'unset')
-            call addmrg_to(compice, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
+      !       call addmap_from(compocn, trim(fldname), compice, mapfcopy, 'unset', 'unset')
+      !       call addmrg_to(compice, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
 
-         end if
-      end do
-      deallocate(S_flds)
+      !    end if
+      ! end do
+      ! deallocate(S_flds)
 
       ! ---------------------------------------------------------------------
       ! to ice: flux fields
