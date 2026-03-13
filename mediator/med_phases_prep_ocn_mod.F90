@@ -828,8 +828,7 @@ contains
       endif
 
       precip_fact = 1 - (global_fw_sum(1)/global_precip_sum(1))
-
-      ! to avoid issues with machine precision, round to 15 decimal places
+      ! MPI reductions are not always deterministic, so round to 15 decimal places
       precip_fact = anint(precip_fact * 1d15) / 1d15
 
       if (maintask .and. debug) then
