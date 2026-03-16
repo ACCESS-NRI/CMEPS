@@ -844,7 +844,7 @@ contains
        call esmFldsExchange_hafs(gcomp, phase='advertise', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     else if (trim(coupling_mode) == 'access-esm') then
-       call esmFldsExchange_access(gcomp, phase='advertise', rc=rc)
+       call esmFldsExchange_accessesm(gcomp, phase='advertise', rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     else
        call shr_log_error(trim(coupling_mode)//' is not a valid coupling_mode', rc=rc)
