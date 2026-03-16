@@ -337,20 +337,20 @@ module esmFldsExchange_accessesm_mod
       ! FIELDS TO ATMOSPHERE
       !=====================================================================
 
-      call addmap_from(compocn, 'So_t', compatm, mapconsf, 'ofrac', 'unset')
-      call addmrg_to(compatm, 'So_t', mrg_from=compocn, mrg_fld='So_t', mrg_type='copy')
-      call addmap_from(compocn, 'So_u', compatm, mapconsf, 'ofrac', 'unset')
-      call addmrg_to(compatm, 'So_u', mrg_from=compocn, mrg_fld='So_u', mrg_type='copy')
-      call addmap_from(compocn, 'So_v', compatm, mapconsf, 'ofrac', 'unset')
-      call addmrg_to(compatm, 'So_v', mrg_from=compocn, mrg_fld='So_v', mrg_type='copy')
+      allocate(S_flds(3))
+      S_flds = (/'So_t', 'So_u', 'So_v'/)
+      do n = 1,size(S_flds)
+         fldname = trim(S_flds(n))
+         if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
+             fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname), rc=rc) &
+            ) then
+            call addmap_from(compocn, trim(fldname), compatm, mapconsf, 'ofrac', 'unset')
+            call addmrg_to(compatm, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
+         end if
+      end do
+      deallocate(S_flds)
 
-      call addmap_from(compice, 'Si_t', compatm, mapconsd, 'ifrac', 'unset')
-      call addmrg_to(compatm, 'Si_t', mrg_from=compice, mrg_fld='Si_t', mrg_type='copy')
-
-      call addmap_from(compice, 'sstfrz', compatm, mapconsf, 'none', 'unset')
-      call addmrg_to(compatm, 'sstfrz', mrg_from=compice, mrg_fld='sstfrz', mrg_type='copy')
-
-      allocate(S_flds(7))
+      allocate(S_flds(9))
       S_flds = (/'Si_t', &
                'Si_ifrac_n', &
                'Si_vsno_n', &
@@ -363,8 +363,12 @@ module esmFldsExchange_accessesm_mod
                /)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
-        call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
-        call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
+        if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
+             fldchk(is_local%wrap%FBImp(compice, compice), trim(fldname), rc=rc) &
+           ) then
+           call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
+           call addmrg_to(compatm, trim(fldname), mrg_from=compice, mrg_fld=trim(fldname), mrg_type='copy')
+        end if
       end do
       deallocate(S_flds)
 
@@ -420,24 +424,32 @@ module esmFldsExchange_accessesm_mod
       deallocate(F_flds)
 
       ! precip
-      call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset')
-      call addmap_from(compatm, 'Faxa_rainl', compocn, mapconsf, 'one', 'unset')
-      call addmrg_to(compocn, 'Faxa_rain' , mrg_from=compatm, mrg_fld='Faxa_rainc:Faxa_rainl', &
+      if (fldchk(is_local%wrap%FBExp(compocn), trim('Faxa_rain'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainc'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainl'),rc=rc) .and. &
+         ) then
+         call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset')
+         call addmap_from(compatm, 'Faxa_rainl', compocn, mapconsf, 'one', 'unset')
+         call addmrg_to(compocn, 'Faxa_rain' , mrg_from=compatm, mrg_fld='Faxa_rainc:Faxa_rainl', &
                mrg_type='sum_with_weights', mrg_fracname='ofrac')
-      
-      call addmap_from(compatm, 'Faxa_snowc', compocn, mapconsf, 'one', 'unset')
-      call addmap_from(compatm, 'Faxa_snowl', compocn, mapconsf, 'one', 'unset')
-      call addmrg_to(compocn, 'Faxa_snow' , mrg_from=compatm, mrg_fld='Faxa_snowc:Faxa_snowl', &
+      end if
+
+      if (fldchk(is_local%wrap%FBExp(compocn), trim('Faxa_snow'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowc'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowl'),rc=rc) .and. &
+         ) then
+         call addmap_from(compatm, 'Faxa_snowc', compocn, mapconsf, 'one', 'unset')
+         call addmap_from(compatm, 'Faxa_snowl', compocn, mapconsf, 'one', 'unset')
+         call addmrg_to(compocn, 'Faxa_snow' , mrg_from=compatm, mrg_fld='Faxa_snowc:Faxa_snowl', &
                mrg_type='sum_with_weights', mrg_fracname='ofrac')
+      end if
       
       ! from ice
-      call addmap_from(compice, 'Si_ifrac', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Si_ifrac', mrg_from=compice, mrg_fld='Si_ifrac', mrg_type='copy')
-
-      allocate(F_flds(3, 2))
+      allocate(F_flds(4, 2))
       F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
       F_flds(2,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
-      F_flds(3,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
+      F_flds(3,:) = (/'Fioi_melth', 'Fioi_melth'/)
+      F_flds(4,:) = (/'Si_ifrac', 'Si_ifrac'/)
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
@@ -451,15 +463,33 @@ module esmFldsExchange_accessesm_mod
       deallocate(F_flds)
 
       ! momentum transfer
-      call addmap_from(compice, 'Fioi_taux', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Foxx_taux', mrg_from=compice, mrg_fld='Fioi_taux', mrg_type='merge', mrg_fracname='ifrac')
-      call addmap_from(compatm, 'Faxa_taux', compocn, mappatch, 'one', 'unset')
-      call addmrg_to(compocn, 'Foxx_taux', mrg_from=compatm, mrg_fld='Faxa_taux', mrg_type='merge', mrg_fracname='ofrac')
+      if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_taux'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compice, compice), trim('Fioi_taux'),rc=rc) &
+         ) then
+         call addmap_from(compice, trim('Fioi_taux'), compocn, mapfcopy, 'unset', 'unset')
+         call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compice, mrg_fld=trim('Fioi_taux'), mrg_type='merge', mrg_fracname='ifrac')
+      end if
 
-      call addmap_from(compice, 'Fioi_tauy', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compice, mrg_fld='Fioi_tauy', mrg_type='merge', mrg_fracname='ifrac')
-      call addmap_from(compatm, 'Faxa_tauy', compocn, mappatch, 'one', 'unset')
-      call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compatm, mrg_fld='Faxa_tauy', mrg_type='merge', mrg_fracname='ofrac')
+      if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_tauy'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compice, compice), trim('Fioi_tauy'),rc=rc) &
+         ) then
+         call addmap_from(compice, trim('Fioi_tauy'), compocn, mapfcopy, 'unset', 'unset')
+         call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compice, mrg_fld=trim('Fioi_tauy'), mrg_type='merge', mrg_fracname='ifrac')
+      end if
+
+      if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_taux'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
+         ) then
+         call addmap_from(compatm, trim('Faxa_taux'), compocn, mappatch, 'one', 'unset')
+         call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='merge', mrg_fracname='ofrac')
+      end if
+
+      if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_tauy'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
+         ) then
+         call addmap_from(compatm, trim('Faxa_tauy'), compocn, mappatch, 'one', 'unset')
+         call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='merge', mrg_fracname='ofrac')
+      end if
 
       !=====================================================================
       ! FIELDS TO ICE (compice)
@@ -534,7 +564,7 @@ module esmFldsExchange_accessesm_mod
              fldchk(is_local%wrap%FBImp(compatm, compatm), trim(fldname1), rc=rc) &
             ) then
 
-            call addmap_from(compatm, trim(fldname1), compice, mapconsf, 'one', 'unset') ! mapping with total ifrac, should use category fractions
+            call addmap_from(compatm, trim(fldname1), compice, mapconsf, 'one', 'unset')
             call addmrg_to(compice, trim(fldname2), mrg_from=compatm, mrg_fld=trim(fldname1), mrg_type='copy')
 
          end if
@@ -542,15 +572,25 @@ module esmFldsExchange_accessesm_mod
       deallocate(F_flds)
 
       ! precip
-      call addmap_from(compatm, 'Faxa_rainc', compice, mapconsf, 'one', 'unset')
-      call addmap_from(compatm, 'Faxa_rainl', compice, mapconsf, 'one', 'unset')
-      call addmrg_to(compice, 'Faxa_rain' , mrg_from=compatm, mrg_fld='Faxa_rainc:Faxa_rainl', &
+      if (fldchk(is_local%wrap%FBExp(compice), trim('Faxa_rain'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainc'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainl'),rc=rc) .and. &
+         ) then
+         call addmap_from(compatm, 'Faxa_rainc', compice, mapconsf, 'one', 'unset')
+         call addmap_from(compatm, 'Faxa_rainl', compice, mapconsf, 'one', 'unset')
+         call addmrg_to(compice, 'Faxa_rain' , mrg_from=compatm, mrg_fld='Faxa_rainc:Faxa_rainl', &
                mrg_type='sum')
-      
-      call addmap_from(compatm, 'Faxa_snowc', compice, mapconsf, 'one', 'unset')
-      call addmap_from(compatm, 'Faxa_snowl', compice, mapconsf, 'one', 'unset')
-      call addmrg_to(compice, 'Faxa_snow' , mrg_from=compatm, mrg_fld='Faxa_snowc:Faxa_snowl', &
+      end if
+
+      if (fldchk(is_local%wrap%FBExp(compice), trim('Faxa_snow'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowc'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowl'),rc=rc) .and. &
+         ) then
+         call addmap_from(compatm, 'Faxa_snowc', compice, mapconsf, 'one', 'unset')
+         call addmap_from(compatm, 'Faxa_snowl', compice, mapconsf, 'one', 'unset')
+         call addmrg_to(compice, 'Faxa_snow' , mrg_from=compatm, mrg_fld='Faxa_snowc:Faxa_snowl', &
                mrg_type='sum')
+      end if
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
