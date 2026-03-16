@@ -47,9 +47,6 @@ module esmFldsExchange_accessesm_mod
       if (phase == 'advertise') then
         call esmFldsExchange_accessesm_advt(gcomp, phase, rc)
         if (chkerr(rc,__LINE__,u_FILE_u)) return
-      elseif (phase == 'fieldcheck') then
-        call esmFldsExchange_accessesm_fchk(gcomp, phase, rc)
-        if (chkerr(rc,__LINE__,u_FILE_u)) return
       elseif (phase == 'initialize') then
         call esmFldsExchange_accessesm_init(gcomp, phase, rc)
         if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -297,47 +294,6 @@ module esmFldsExchange_accessesm_mod
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
     end subroutine esmFldsExchange_accessesm_advt
-
-    !-----------------------------------------------------------------------------
-
-    subroutine esmFldsExchange_accessesm_fchk(gcomp, phase, rc)
-
-      use med_methods_mod       , only : fldchk => med_methods_FB_FldChk
-      use med_internalstate_mod , only : InternalState
-
-      ! input/output parameters:
-      type(ESMF_GridComp)              :: gcomp
-      character(len=*) , intent(in)    :: phase
-      integer          , intent(inout) :: rc
-
-      ! local variables:
-      type(InternalState) :: is_local
-      character(len=*) , parameter   :: subname='(esmFldsExchange_accessesm_fchk)'
-      !--------------------------------------
-
-      call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
-      rc = ESMF_SUCCESS
-
-      !---------------------------------------
-      ! Get the internal state
-      !---------------------------------------
-      nullify(is_local%wrap)
-      call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
-      if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-      if (fldchk(is_local%wrap%FBImp(compocn,compocn),'So_omask',rc=rc)) then
-         call ESMF_LogWrite(trim(subname)//": Field connected "//"So_omask", &
-            ESMF_LOGMSG_INFO)
-      else
-         call ESMF_LogSetError(ESMF_FAILURE, &
-            msg=trim(subname)//": Field is not connected "//"So_omask", &
-            line=__LINE__, file=__FILE__, rcToReturn=rc)
-         return  ! bail out
-      endif
-
-      call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
-
-    end subroutine esmFldsExchange_accessesm_fchk
 
     !-----------------------------------------------------------------------------
 
