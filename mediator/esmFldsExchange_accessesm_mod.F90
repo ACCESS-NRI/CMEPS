@@ -426,7 +426,7 @@ module esmFldsExchange_accessesm_mod
       ! precip
       if (fldchk(is_local%wrap%FBExp(compocn), trim('Faxa_rain'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainc'),rc=rc) .and. &
-          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainl'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainl'),rc=rc) &
          ) then
          call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset')
          call addmap_from(compatm, 'Faxa_rainl', compocn, mapconsf, 'one', 'unset')
@@ -436,7 +436,7 @@ module esmFldsExchange_accessesm_mod
 
       if (fldchk(is_local%wrap%FBExp(compocn), trim('Faxa_snow'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowc'),rc=rc) .and. &
-          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowl'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowl'),rc=rc) &
          ) then
          call addmap_from(compatm, 'Faxa_snowc', compocn, mapconsf, 'one', 'unset')
          call addmap_from(compatm, 'Faxa_snowl', compocn, mapconsf, 'one', 'unset')
@@ -574,7 +574,7 @@ module esmFldsExchange_accessesm_mod
       ! precip
       if (fldchk(is_local%wrap%FBExp(compice), trim('Faxa_rain'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainc'),rc=rc) .and. &
-          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainl'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_rainl'),rc=rc) &
          ) then
          call addmap_from(compatm, 'Faxa_rainc', compice, mapconsf, 'one', 'unset')
          call addmap_from(compatm, 'Faxa_rainl', compice, mapconsf, 'one', 'unset')
@@ -584,7 +584,7 @@ module esmFldsExchange_accessesm_mod
 
       if (fldchk(is_local%wrap%FBExp(compice), trim('Faxa_snow'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowc'),rc=rc) .and. &
-          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowl'),rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_snowl'),rc=rc) &
          ) then
          call addmap_from(compatm, 'Faxa_snowc', compice, mapconsf, 'one', 'unset')
          call addmap_from(compatm, 'Faxa_snowl', compice, mapconsf, 'one', 'unset')
