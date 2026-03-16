@@ -202,8 +202,6 @@ module esmFldsExchange_access_mod
       end do
       deallocate(F_flds)
 
-      call addfld_from(compatm, 'Faxa_rainc')
-      call addfld_from(compatm, 'Faxa_snowc')
 
       ! from ice
       allocate(F_flds(6, 2))
