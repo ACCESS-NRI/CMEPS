@@ -52,7 +52,7 @@ module MED
   use esmFldsExchange_ufs_mod  , only : esmFldsExchange_ufs
   use esmFldsExchange_cesm_mod , only : esmFldsExchange_cesm
   use esmFldsExchange_hafs_mod , only : esmFldsExchange_hafs
-  use esmFldsExchange_access_mod , only : esmFldsExchange_access
+  use esmFldsExchange_accessesm_mod , only : esmFldsExchange_accessesm
   use med_phases_profile_mod   , only : med_phases_profile_finalize
   use shr_log_mod              , only : shr_log_error
 

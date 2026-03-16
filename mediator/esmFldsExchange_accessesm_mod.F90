@@ -1,4 +1,4 @@
-module esmFldsExchange_access_mod
+module esmFldsExchange_accessesm_mod
 
     use ESMF
     use NUOPC
@@ -21,7 +21,7 @@ module esmFldsExchange_access_mod
     implicit none
     public
 
-    public :: esmFldsExchange_access
+    public :: esmFldsExchange_accessesm
 
     character(*), parameter :: u_FILE_u = &
          __FILE__
@@ -30,7 +30,7 @@ module esmFldsExchange_access_mod
   contains
   !===============================================================================
 
-    subroutine esmFldsExchange_access(gcomp, phase, rc)
+    subroutine esmFldsExchange_accessesm(gcomp, phase, rc)
 
       ! input/output parameters:
       type(ESMF_GridComp)              :: gcomp
@@ -38,20 +38,20 @@ module esmFldsExchange_access_mod
       integer          , intent(inout) :: rc
 
       ! local variables:
-      character(len=*) , parameter   :: subname='(esmFldsExchange_access)'
+      character(len=*) , parameter   :: subname='(esmFldsExchange_accessesm)'
       !--------------------------------------
 
       call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
       rc = ESMF_SUCCESS
 
       if (phase == 'advertise') then
-        call esmFldsExchange_access_advt(gcomp, phase, rc)
+        call esmFldsExchange_accessesm_advt(gcomp, phase, rc)
         if (chkerr(rc,__LINE__,u_FILE_u)) return
       elseif (phase == 'fieldcheck') then
-        call esmFldsExchange_access_fchk(gcomp, phase, rc)
+        call esmFldsExchange_accessesm_fchk(gcomp, phase, rc)
         if (chkerr(rc,__LINE__,u_FILE_u)) return
       elseif (phase == 'initialize') then
-        call esmFldsExchange_access_init(gcomp, phase, rc)
+        call esmFldsExchange_accessesm_init(gcomp, phase, rc)
         if (chkerr(rc,__LINE__,u_FILE_u)) return
       else
         call ESMF_LogSetError(ESMF_FAILURE, &
@@ -62,11 +62,11 @@ module esmFldsExchange_access_mod
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
-    end subroutine esmFldsExchange_access
+    end subroutine esmFldsExchange_accessesm
 
     !-----------------------------------------------------------------------------
 
-    subroutine esmFldsExchange_access_advt(gcomp, phase, rc)
+    subroutine esmFldsExchange_accessesm_advt(gcomp, phase, rc)
 
       ! input/output parameters:
       type(ESMF_GridComp)              :: gcomp
@@ -83,7 +83,7 @@ module esmFldsExchange_access_mod
       character(len=CS), allocatable :: S_flds(:)
       character(len=CS), allocatable :: F_flds(:,:)
       character(len=CS), allocatable :: suffix(:)
-      character(len=*) , parameter   :: subname='(esmFldsExchange_access_advt)'
+      character(len=*) , parameter   :: subname='(esmFldsExchange_accessesm_advt)'
       !--------------------------------------
 
       call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
@@ -296,11 +296,11 @@ module esmFldsExchange_access_mod
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
-    end subroutine esmFldsExchange_access_advt
+    end subroutine esmFldsExchange_accessesm_advt
 
     !-----------------------------------------------------------------------------
 
-    subroutine esmFldsExchange_access_fchk(gcomp, phase, rc)
+    subroutine esmFldsExchange_accessesm_fchk(gcomp, phase, rc)
 
       use med_methods_mod       , only : fldchk => med_methods_FB_FldChk
       use med_internalstate_mod , only : InternalState
@@ -312,7 +312,7 @@ module esmFldsExchange_access_mod
 
       ! local variables:
       type(InternalState) :: is_local
-      character(len=*) , parameter   :: subname='(esmFldsExchange_access_fchk)'
+      character(len=*) , parameter   :: subname='(esmFldsExchange_accessesm_fchk)'
       !--------------------------------------
 
       call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
@@ -337,11 +337,11 @@ module esmFldsExchange_access_mod
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
-    end subroutine esmFldsExchange_access_fchk
+    end subroutine esmFldsExchange_accessesm_fchk
 
     !-----------------------------------------------------------------------------
 
-    subroutine esmFldsExchange_access_init(gcomp, phase, rc)
+    subroutine esmFldsExchange_accessesm_init(gcomp, phase, rc)
 
       use med_methods_mod       , only : fldchk => med_methods_FB_FldChk
       use med_internalstate_mod , only : InternalState
@@ -366,7 +366,7 @@ module esmFldsExchange_access_mod
       character(len=CS), allocatable :: S_flds(:)
       character(len=CS), allocatable :: F_flds(:,:)
       character(len=CS), allocatable :: suffix(:)
-      character(len=*) , parameter   :: subname='(esmFldsExchange_access_init)'
+      character(len=*) , parameter   :: subname='(esmFldsExchange_accessesm_init)'
       !--------------------------------------
 
       call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
@@ -607,8 +607,8 @@ module esmFldsExchange_access_mod
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
-    end subroutine esmFldsExchange_access_init
+    end subroutine esmFldsExchange_accessesm_init
 
     !-----------------------------------------------------------------------------
 
-  end module esmFldsExchange_access_mod
+  end module esmFldsExchange_accessesm_mod
