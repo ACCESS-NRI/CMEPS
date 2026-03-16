@@ -397,13 +397,16 @@ module esmFldsExchange_access_mod
       call addmrg_to(compatm, 'sstfrz', mrg_from=compice, mrg_fld='sstfrz', mrg_type='copy')
 
       allocate(S_flds(7))
-      S_flds = (/'Si_ifrac_n', &
-                  'Si_vsno_n', &
-                  'Si_vice_n', &
-                  'Si_topt', &
-                  'Si_topk', &
-                  'Si_pndf_n', &
-                  'Si_pndt_n'/)
+      S_flds = (/'Si_t', &
+               'Si_ifrac_n', &
+               'Si_vsno_n', &
+               'Si_vice_n', &
+               'Si_topt', &
+               'Si_topk', &
+               'Si_pndf_n', &
+               'Si_pndt_n', &
+               'Si_Tf' &
+               /)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addmap_from(compice, trim(fldname), compatm, mapconsf, 'none', 'unset')
