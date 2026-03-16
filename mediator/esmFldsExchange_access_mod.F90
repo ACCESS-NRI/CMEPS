@@ -141,14 +141,14 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(9))
       S_flds = (/'Si_t', &
-                  'Si_ifrac_n', &
-                  'Si_vsno_n', &
-                  'Si_vice_n', &
-                  'Si_topt', &
-                  'Si_topk', &
-                  'Si_pndf_n', &
-                  'Si_pndt_n', &
-                  'sstfrz' &
+               'Si_ifrac_n', &
+               'Si_vsno_n', &
+               'Si_vice_n', &
+               'Si_topt', &
+               'Si_topk', &
+               'Si_pndf_n', &
+               'Si_pndt_n', &
+               'Si_Tf' &
                /)
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
@@ -166,7 +166,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
       S_flds = (/'Sa_pslv', &
-                  'So_duu10n' /)
+               'So_duu10n' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -209,7 +209,7 @@ module esmFldsExchange_access_mod
       allocate(F_flds(6, 2))
       F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/) ! salt flux sea-ice to ocean
       F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
-      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/) ! melt water flux sea-ice to ocean
+      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/) ! freshwater flux sea-ice to ocean
       F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
       F_flds(5,:) = (/'Fioi_taux', 'Foxx_taux'/)
       F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! surface stress sea-ice to ocean
@@ -232,13 +232,14 @@ module esmFldsExchange_access_mod
       ! from atm
       allocate(S_flds(8))
       S_flds = (/'Sa_z', &
-                  'Sa_u', &
-                  'Sa_v', &
-                  'Sa_shum', &
-                  'Sa_tbot', &
-                  'Sa_pbot', &
-                  'Sa_dens', &
-                  'Sa_ptem'/)
+               'Sa_u', &
+               'Sa_v', &
+               'Sa_shum', &
+               'Sa_tbot', &
+               'Sa_pbot', &
+               'Sa_dens', &
+               'Sa_ptem' &
+               /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -384,9 +385,6 @@ module esmFldsExchange_access_mod
       ! FIELDS TO ATMOSPHERE
       !=====================================================================
 
-      ! ---------------------------------------------------------------------
-      ! to atm: sea surface temperature
-      ! ---------------------------------------------------------------------
       call addmap_from(compocn, 'So_t', compatm, mapconsf, 'ofrac', 'unset')
       call addmrg_to(compatm, 'So_t', mrg_from=compocn, mrg_fld='So_t', mrg_type='copy')
       call addmap_from(compocn, 'So_u', compatm, mapconsf, 'ofrac', 'unset')
@@ -424,7 +422,7 @@ module esmFldsExchange_access_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
       S_flds = (/'Sa_pslv', & ! inst_zonal_wind_height10m
-                  'So_duu10n' /) ! inst_temp_height_surface
+               'So_duu10n' /) ! inst_temp_height_surface
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compocn), trim(fldname), rc=rc) .and. &
