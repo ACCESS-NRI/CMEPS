@@ -542,8 +542,8 @@ module esmFldsExchange_access_mod
                  'So_dhdy', & ! inst_merid_wind_height10m
                  'So_t ', & ! inst_temp_height2m
                  'So_s ', & ! inst_spec_humid_height2m
-                 'So_u', & ! Sa_pslv
-                 'So_v', & ! Sa_pslv
+                 'So_u', & ! ocean surface zonal current
+                 'So_v', & ! ocean surface meridional current
                  'Fioo_q' /) ! inst_temp_height_surface
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
