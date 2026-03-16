@@ -176,7 +176,7 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(F_flds(13, 2))
+      allocate(F_flds(11, 2))
       F_flds(1,:) = (/'Faxa_taux ', 'Foxx_taux'/)
       F_flds(2,:) = (/'Faxa_tauy ', 'Foxx_tauy'/)
       F_flds(3,:) = (/'Foxx_sen', 'Foxx_sen'/)
@@ -186,10 +186,8 @@ module esmFldsExchange_accessesm_mod
       F_flds(7,:) = (/'Foxx_swnet_vdf', 'Foxx_swnet_vdf'/)
       F_flds(8,:) = (/'Foxx_swnet_idr', 'Foxx_swnet_idr'/)
       F_flds(9,:) = (/'Foxx_swnet_idf', 'Foxx_swnet_idf'/)
-      F_flds(10,:) = (/'Faxa_rainc', 'Faxa_rain'/)
-      F_flds(11,:) = (/'Faxa_snowc', 'Faxa_snow'/)
-      F_flds(12,:) = (/'Foxx_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
-      F_flds(13,:) = (/'Foxx_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
+      F_flds(10,:) = (/'Foxx_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
+      F_flds(11,:) = (/'Foxx_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
@@ -262,19 +260,12 @@ module esmFldsExchange_accessesm_mod
       ! to ice: flux fields
       ! ---------------------------------------------------------------------
 
-      allocate(F_flds(12, 2))
-      F_flds(1,:) = (/'Faxa_swvdr ', 'Faxa_swvdr '/)
-      F_flds(2,:) = (/'Faxa_swndr ', 'Faxa_swndr '/)
-      F_flds(3,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
-      F_flds(4,:) = (/'Faxa_swndf', 'Faxa_swndf'/)
-      F_flds(5,:) = (/'Faxa_lwdn', 'Faxa_lwdn'/)
-      F_flds(6,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
-      F_flds(7,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
-      F_flds(8,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
-      F_flds(9,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
-      F_flds(10,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
-      F_flds(11,:) = (/'Foxx_sen', 'Foxx_sen'/)
-      F_flds(12,:) = (/'Faxa_swdn', 'Faxa_swdn'/)
+      allocate(F_flds(5, 2))
+      F_flds(1,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
+      F_flds(2,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
+      F_flds(3,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
+      F_flds(4,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
+      F_flds(5,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
@@ -283,10 +274,17 @@ module esmFldsExchange_accessesm_mod
       end do
       deallocate(F_flds)
 
+      ! ---------------------------------------------------------------------
+      ! precipitation
+      ! ---------------------------------------------------------------------
+
       call addfld_from(compatm, 'Faxa_rainc')
       call addfld_from(compatm, 'Faxa_snowc')
       call addfld_from(compatm, 'Faxa_rainl')
       call addfld_from(compatm, 'Faxa_snowl')
+
+      call addfld_to(compocn, 'Faxa_rain')
+      call addfld_to(compocn, 'Faxa_snow')
 
       call addfld_to(compice, 'Faxa_rain')
       call addfld_to(compice, 'Faxa_snow')
@@ -522,19 +520,12 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       ! from atm
-      allocate(F_flds(12, 2))
+      allocate(F_flds(5, 2))
       F_flds(1,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
       F_flds(2,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
       F_flds(3,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
       F_flds(4,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
       F_flds(5,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
-      F_flds(6,:) = (/'Faxa_swvdr ', 'Faxa_swvdr '/)
-      F_flds(7,:) = (/'Faxa_swndr ', 'Faxa_swndr '/)
-      F_flds(8,:) = (/'Faxa_swvdf', 'Faxa_swvdf'/)
-      F_flds(9,:) = (/'Faxa_swndf', 'Faxa_swndf'/)
-      F_flds(10,:) = (/'Faxa_lwdn', 'Faxa_lwdn'/)
-      F_flds(11,:) = (/'Foxx_sen', 'Foxx_sen'/)
-      F_flds(12,:) = (/'Faxa_swdn', 'Faxa_swdn'/)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
