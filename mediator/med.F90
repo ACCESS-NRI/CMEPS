@@ -1864,7 +1864,7 @@ contains
          call esmFldsExchange_hafs(gcomp, phase='initialize', rc=rc)
          if (ChkErr(rc,__LINE__,u_FILE_u)) return
      else if (trim(coupling_mode) == 'access-esm') then
-          call esmFldsExchange_access(gcomp, phase='initialize', rc=rc)
+          call esmFldsExchange_accessesm(gcomp, phase='initialize', rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
       end if
 
