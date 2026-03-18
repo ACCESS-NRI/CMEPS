@@ -58,10 +58,12 @@ contains
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    if (trim(coupling_mode) == 'access-esm') then
-      call med_phases_post_atm_time_travelling_ice(gcomp, rc)
-      if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
+   ! Add the is coupling active line from below?? second if: if 
+    !(is_local%wrap%med_coupling_active(compatm,compice))
+   !  if (trim(coupling_mode) == 'access-esm') then
+   !    call med_phases_post_atm_time_travelling_ice(gcomp, rc)
+   !    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+   !  end if
 
     ! map atm to ocn
     if (is_local%wrap%med_coupling_active(compatm,compocn)) then

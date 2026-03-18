@@ -17,3 +17,5 @@ https://escomp.github.io/CMEPS/
 ## Branch info:
 
 This is a branch from cm3-change-rc-cmeps1.1.31-x for use with regional cm3. I've tried to comment out ice flux fields. Eventually, these commented out fields should be handled by if statements so we can share code between regional and global cm3
+
+
