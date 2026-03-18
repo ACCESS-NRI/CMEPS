@@ -1659,7 +1659,7 @@ contains
           deallocate(fldptr1_tmp)
 
           else if (rank >= 2 .and. lungridded_nc ) then
-             ! Whole 2d/3d field is constained within one netcdf variable with this name
+             ! Whole 2d/3d field is contained within one netcdf variable with this name
              name1 = trim(lpre)//'_'//trim(itemc)
 
              rcode = pio_inq_varid(pioid, trim(name1), varid)
