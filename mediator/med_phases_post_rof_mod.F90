@@ -12,7 +12,7 @@ module med_phases_post_rof_mod
   use ESMF                  , only : ESMF_Field, ESMF_FieldCreate, ESMF_FieldGet
   use ESMF                  , only : ESMF_FieldBundle, ESMF_FieldBundleCreate
   use ESMF                  , only : ESMF_FieldBundleGet, ESMF_FieldBundleAdd
-  use ESMF                  , only : ESMF_VM, ESMF_VMAllreduce, ESMF_REDUCE_SUM
+  use ESMF                  , only : ESMF_VM, ESMF_VMAllreduce, ESMF_VMReduce,  ESMF_REDUCE_SUM
   use med_kind_mod          , only : CX=>SHR_KIND_CX, CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, R8=>SHR_KIND_R8
   use med_internalstate_mod , only : complnd, compocn, compice, comprof
   use med_internalstate_mod , only : InternalState, maintask, logunit
@@ -474,8 +474,7 @@ contains
     real(r8), pointer   :: areas(:), lats(:)
     real(r8), pointer   :: rof2ocn_spread(:,:)
     real(r8), pointer   :: runoff_flux(:)  ! temporary 1d pointer
-    real(r8)            :: local_sh(1), global_sh(1) !Antarctic (frozen) runoff
-    real(r8)            :: local_nh(1), global_nh(1) !Greenland (frozen) runoff
+    real(r8)            :: local_sum(2), global_sum(2) ! Antarctic, Greenland (frozen) runoff
     character(len=CL)   :: tempstr
     integer :: n, i, month
 
@@ -544,48 +543,27 @@ contains
       do month = 1, 12
         runoff_flux => rof2ocn_spread(:,month)
         ! calculate sum of spreading 
-        local_sh(1) = 0.0_r8
-        local_nh(1) = 0.0_r8
+        local_sum = 0.0_r8
         do i = 1, size(runoff_flux)
           if (lats(i) < 0.0_r8) then
-            local_sh(1) = local_sh(1) + areas(i) * runoff_flux(i)
+            local_sum(1) = local_sum(1) + areas(i) * runoff_flux(i)
           else
-            local_nh(1) = local_nh(1) + areas(i) * runoff_flux(i)
+            local_sum(2) = local_sum(2) + areas(i) * runoff_flux(i)
           end if
         end do
 
-        call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
-            reduceflag=ESMF_REDUCE_SUM, rc=rc)
-        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-        call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
+        call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
             reduceflag=ESMF_REDUCE_SUM, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
         ! adjust correction so that it's sums to 1 in each hemisphere
         do i = 1, size(runoff_flux)
           if (lats(i) < 0.0_r8) then
-            runoff_flux(i) = runoff_flux(i) / global_sh(1)
+            runoff_flux(i) = runoff_flux(i) / global_sum(1)
           else
-            runoff_flux(i) = runoff_flux(i) / global_nh(1)
+            runoff_flux(i) = runoff_flux(i) / global_sum(2)
           end if
         end do
-
-        local_sh(1) = 0.0_r8
-        local_nh(1) = 0.0_r8
-        do i = 1, size(runoff_flux)
-          if (lats(i) < 0.0_r8) then
-            local_sh(1) = local_sh(1) + areas(i) * runoff_flux(i)
-          else
-            local_nh(1) = local_nh(1) + areas(i) * runoff_flux(i)
-          end if
-        end do
-
-        call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
-            reduceflag=ESMF_REDUCE_SUM, rc=rc)
-        if (ChkErr(rc,__LINE__,u_FILE_u)) return
-        call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
-            reduceflag=ESMF_REDUCE_SUM, rc=rc)
-        if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
         rof2ocn_spread(:,month) = runoff_flux
 
@@ -616,9 +594,7 @@ contains
     real(r8), pointer   :: runoff_flux(:)   ! temporary 1d pointer
     real(r8), pointer   :: rof2ocn_spread(:,:)
     real(r8), pointer   :: areas(:), lats(:)
-    real(r8)            :: local_sh(1), global_sh(1) !Antarctic (frozen) runoff
-    real(r8)            :: local_nh(1), global_nh(1) !Greenland (frozen) runoff
-    real(r8)            :: global_sum
+    real(r8)            :: local_sum(2), global_sum(2) !Antarctic,Greenland (frozen) runoff
     integer :: n, mm
 
     integer, parameter :: dbug_threshold = 20 ! threshold for writing debug information in this subroutine
@@ -650,28 +626,24 @@ contains
     call fldbun_getdata1d(FBrof_r, trim(field_name), runoff_flux, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    local_sh(1) = 0.0_r8
-    local_nh(1) = 0.0_r8
+    local_sum = 0.0_r8
     do n = 1, size(runoff_flux)
       if (lats(n) < 0.0_r8) then
-        local_sh(1) = local_sh(1) + areas(n) * runoff_flux(n)
+        local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
       else
-        local_nh(1) = local_nh(1) + areas(n) * runoff_flux(n)
+        local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
       end if
     end do
 
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
-         reduceflag=ESMF_REDUCE_SUM, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
+    call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
          reduceflag=ESMF_REDUCE_SUM, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (maintask .and. dbug_flag > dbug_threshold) then
       write(logunit,'(a)') subname//' Before correction: '//trim(field_name)
-      write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sh(1)
-      write(logunit,'(a,e27.17)') subname//' global_nh = ', global_nh(1)
+      write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
+      write(logunit,'(a,e27.17)') subname//' global_nh = ', global_sum(2)
     end if
 
     !get from fieldbundle
@@ -681,34 +653,32 @@ contains
     ! spead runoff by the saved pattern for the model month
     do n = 1, size(runoff_flux)
       if (lats(n) < 0.0_r8) then
-        runoff_flux(n) = rof2ocn_spread(n,mm) * global_sh(1)
+        runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(1)
       else
-        runoff_flux(n) = rof2ocn_spread(n,mm) * global_nh(1)
+        runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(2)
       end if
     end do
 
-    local_sh(1) = 0.0_r8
-    local_nh(1) = 0.0_r8
-    do n = 1, size(runoff_flux)
-      if (lats(n) < 0.0_r8) then
-        local_sh(1) = local_sh(1) + areas(n) * runoff_flux(n)
-      else
-        local_nh(1) = local_nh(1) + areas(n) * runoff_flux(n)
-      end if
-    end do
-
-    call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllreduce(vm, senddata=local_sh, recvdata=global_sh, count=1, &
-         reduceflag=ESMF_REDUCE_SUM, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllreduce(vm, senddata=local_nh, recvdata=global_nh, count=1, &
-         reduceflag=ESMF_REDUCE_SUM, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if (maintask .and. dbug_flag > dbug_threshold) then
-      write(logunit,'(a)') subname//' After correction: '//trim(field_name)
-      write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sh(1)
-      write(logunit,'(a,e27.17)') subname//' global_nh = ', global_nh(1)
+
+      ! calculate the new global sum (after correction), should be equal to 0
+      local_sum = 0.0_r8
+      do n = 1, size(runoff_flux)
+        if (lats(n) < 0.0_r8) then
+          local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
+        else
+          local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
+        end if
+      end do
+
+      call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      call ESMF_VMReduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
+          reduceflag=ESMF_REDUCE_SUM, rootPet = 0, rc=rc)
+      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      write(logunit,'(a)') subname//' Before correction: '//trim(field_name)
+      write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
+      write(logunit,'(a,e27.17)') subname//' global_nh = ', global_sum(2)
     end if
 
     if (dbug_flag > dbug_threshold) then
