@@ -222,24 +222,6 @@ module esmFldsExchange_accessesm_mod
       ! to ice: state fields
       ! ---------------------------------------------------------------------
 
-      ! from atm
-      allocate(S_flds(8))
-      S_flds = (/'Sa_z', &
-               'Sa_u', &
-               'Sa_v', &
-               'Sa_shum', &
-               'Sa_tbot', &
-               'Sa_pbot', &
-               'Sa_dens', &
-               'Sa_ptem' &
-               /)
-      do n = 1,size(S_flds)
-         fldname = trim(S_flds(n))
-         call addfld_from(compatm, trim(fldname))
-         call addfld_to(compice, trim(fldname))
-      end do
-      deallocate(S_flds)
-
       ! from ocn
       allocate(S_flds(7))
       S_flds = (/'So_dhdx', &
@@ -288,6 +270,9 @@ module esmFldsExchange_accessesm_mod
 
       call addfld_to(compice, 'Faxa_rain')
       call addfld_to(compice, 'Faxa_snow')
+
+      call addfld_to(compice, 'Faii_taux')
+      call addfld_to(compice, 'Faii_tauy')
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
@@ -499,30 +484,6 @@ module esmFldsExchange_accessesm_mod
       ! to ice: state fields
       ! ---------------------------------------------------------------------
 
-      ! from atm
-      allocate(S_flds(8))
-      S_flds = (/'Sa_z', &
-                  'Sa_u', &
-                  'Sa_v', &
-                  'Sa_shum', &
-                  'Sa_tbot', &
-                  'Sa_pbot', &
-                  'Sa_dens', &
-                  'Sa_ptem' /)
-
-      do n = 1,size(S_flds)
-         fldname = trim(S_flds(n))
-         if (fldchk(is_local%wrap%FBExp(compice), trim(fldname),rc=rc) .and. &
-               fldchk(is_local%wrap%FBImp(compatm, compatm), trim(fldname),rc=rc) &
-            ) then
-
-            call addmap_from(compatm, trim(fldname), compice, mapbilnr, 'one', 'unset')
-            call addmrg_to(compice, trim(fldname), mrg_from=compatm, mrg_fld=trim(fldname), mrg_type='copy')
-
-         end if
-      end do
-      deallocate(S_flds)
-
       ! from ocn
       allocate(S_flds(7))
       S_flds = (/'So_dhdx', & ! inst_zonal_wind_height10m
@@ -570,6 +531,21 @@ module esmFldsExchange_accessesm_mod
          end if
       end do
       deallocate(F_flds)
+
+      ! wind stress
+      if (fldchk(is_local%wrap%FBExp(compice), trim('Faii_taux'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
+         ) then
+         call addmap_from(compatm, trim('Faxa_taux'), compice, mappatch, 'one', 'unset')
+         call addmrg_to(compice, trim('Faii_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='copy')
+      end if
+
+      if (fldchk(is_local%wrap%FBExp(compice), trim('Faii_tauy'), rc=rc) .and. &
+          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
+         ) then
+         call addmap_from(compatm, trim('Faxa_tauy'), compice, mappatch, 'one', 'unset')
+         call addmrg_to(compice, trim('Faii_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='copy')
+      end if
 
       ! precip
       if (fldchk(is_local%wrap%FBExp(compice), trim('Faxa_rain'), rc=rc) .and. &
