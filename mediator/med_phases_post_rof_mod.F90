@@ -459,7 +459,6 @@ contains
   subroutine med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
     !---------------------------------------------------------------
     use med_io_mod       , only : med_io_read
-    use, intrinsic :: ieee_arithmetic, only : ieee_is_nan
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
@@ -470,12 +469,10 @@ contains
     type(InternalState) :: is_local
     type(ESMF_VM)       :: vm
     type(ESMF_field) :: field_l                ! climatology, 12 months
-    real(r8)            :: glob_area_inv
     real(r8), pointer   :: areas(:), lats(:)
     real(r8), pointer   :: rof2ocn_spread(:,:)
     real(r8), pointer   :: runoff_flux(:)  ! temporary 1d pointer
     real(r8)            :: local_sum(2), global_sum(2) ! Antarctic, Greenland (frozen) runoff
-    character(len=CL)   :: tempstr
     integer :: n, i, month
 
     integer, parameter :: dbug_threshold = 0 ! threshold for writing debug information in this subroutine
@@ -522,7 +519,7 @@ contains
 
     ! read spreading from file
     if (dbug_flag > dbug_threshold) then
-      call ESMF_LogWrite(trim(subname)//": tryign to read rof2ocn_spread from file", ESMF_LOGMSG_INFO)
+      call ESMF_LogWrite(trim(subname)//": trying to read rof2ocn_spread from file", ESMF_LOGMSG_INFO)
     endif
     call med_io_read(rof2ocn_ice_spread, vm, FBrof_pattern, pre='pattern', ungridded_nc=.true.,  rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -541,14 +538,13 @@ contains
       endif
 
       do month = 1, 12
-        runoff_flux => rof2ocn_spread(:,month)
         ! calculate sum of spreading 
         local_sum = 0.0_r8
-        do i = 1, size(runoff_flux)
+        do i = 1, size(areas)
           if (lats(i) < 0.0_r8) then
-            local_sum(1) = local_sum(1) + areas(i) * runoff_flux(i)
+            local_sum(1) = local_sum(1) + areas(i) * rof2ocn_spread(i,month)
           else
-            local_sum(2) = local_sum(2) + areas(i) * runoff_flux(i)
+            local_sum(2) = local_sum(2) + areas(i) * rof2ocn_spread(i,month)
           end if
         end do
 
@@ -557,15 +553,13 @@ contains
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
         ! adjust correction so that it's sums to 1 in each hemisphere
-        do i = 1, size(runoff_flux)
+        do i = 1, size(areas)
           if (lats(i) < 0.0_r8) then
-            runoff_flux(i) = runoff_flux(i) / global_sum(1)
+            rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(1)
           else
-            runoff_flux(i) = runoff_flux(i) / global_sum(2)
+            rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(2)
           end if
         end do
-
-        rof2ocn_spread(:,month) = runoff_flux
 
       enddo ! month
     enddo
@@ -661,7 +655,7 @@ contains
 
     if (maintask .and. dbug_flag > dbug_threshold) then
 
-      ! calculate the new global sum (after correction), should be equal to 0
+      ! calculate the new global sum (after correction), difference should be equal to 0
       local_sum = 0.0_r8
       do n = 1, size(runoff_flux)
         if (lats(n) < 0.0_r8) then
@@ -676,7 +670,7 @@ contains
       call ESMF_VMReduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
           reduceflag=ESMF_REDUCE_SUM, rootPet = 0, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-      write(logunit,'(a)') subname//' Before correction: '//trim(field_name)
+      write(logunit,'(a)') subname//' After correction: '//trim(field_name)
       write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
       write(logunit,'(a,e27.17)') subname//' global_nh = ', global_sum(2)
     end if

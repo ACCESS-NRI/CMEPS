@@ -1489,7 +1489,7 @@ contains
     character(len=*)              ,optional ,intent(in)  :: pre      ! prefix to variable name
     logical                       ,optional ,intent(in)  :: ungridded_nc
          ! if true : ungridded dim in fields is dimension in netcdf file, 
-         ! if false: ungridded_dim is provided in seperate variables with the index appended
+         ! if false: ungridded_dim is provided in separate variables with the index appended
     integer(kind=PIO_OFFSET_KIND) ,optional ,intent(in)  :: frame
     integer                                 ,intent(out) :: rc
 
@@ -1497,7 +1497,7 @@ contains
     type(ESMF_Field)              :: lfield
     integer                       :: rcode, ierr
     integer                       :: nf
-    integer                       :: k,n,l,m
+    integer                       :: k,n,l
     type(file_desc_t)             :: pioid
     type(var_desc_t)              :: varid
     type(io_desc_t)               :: iodesc
@@ -1725,7 +1725,7 @@ contains
   subroutine med_io_read_init_iodesc(field, name1, pioid, iodesc, ungridded_nc, rc)
 
     use ESMF , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
-    use ESMF , only : ESMF_FieldBundleIsCreated, ESMF_FieldBundle, ESMF_Mesh, ESMF_DistGrid
+    use ESMF , only : ESMF_FieldBundleIsCreated, ESMF_Mesh, ESMF_DistGrid
     use ESMF , only : ESMF_FieldBundleGet, ESMF_FieldGet, ESMF_MeshGet, ESMF_DistGridGet
     use ESMF , only : ESMF_Field, ESMF_FieldGet, ESMF_AttributeGet
     use pio  , only : file_desc_T, var_desc_t, io_desc_t, pio_nowrite, pio_openfile
@@ -1749,7 +1749,7 @@ contains
     integer             :: ndims
     integer, pointer    :: dimid(:)
     type(var_desc_t)    :: varid
-    type(integer), allocatable :: gdims(:)
+    integer, allocatable :: gdims(:)
     integer             :: lnx,lny,lni
     integer, pointer    :: maxIndexPTile(:,:)
     integer             :: dimCount, tileCount
