@@ -653,7 +653,7 @@ contains
       end if
     end do
 
-    if (maintask .and. dbug_flag > dbug_threshold) then
+    if (dbug_flag > dbug_threshold) then
 
       ! calculate the new global sum (after correction), difference should be equal to 0
       local_sum = 0.0_r8
@@ -668,11 +668,13 @@ contains
       call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
       call ESMF_VMReduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
-          reduceflag=ESMF_REDUCE_SUM, rootPet = 0, rc=rc)
+          reduceflag=ESMF_REDUCE_SUM, rootPet=0, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-      write(logunit,'(a)') subname//' After correction: '//trim(field_name)
-      write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
-      write(logunit,'(a,e27.17)') subname//' global_nh = ', global_sum(2)
+      if (maintask) then
+          write(logunit,'(a)') subname//' After correction: '//trim(field_name)
+          write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
+          write(logunit,'(a,e27.17)') subname//' global_nh = ', global_sum(2)
+      end if
     end if
 
     if (dbug_flag > dbug_threshold) then
