@@ -172,8 +172,6 @@ contains
     !-------------------------------------------------------------------------------
 #endif
 
-   rc = ESMF_SUCCESS
-
 #ifdef CESMCOUPLED
     io_subsystem => shr_pio_getiosys(med_id)
     pio_iotype   =  shr_pio_getiotype(med_id)
