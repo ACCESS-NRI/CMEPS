@@ -163,7 +163,7 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
       S_flds = (/'Sa_pslv', &
-               'So_duu10n' /)
+               'Sa_duu10n' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -179,15 +179,15 @@ module esmFldsExchange_accessesm_mod
       allocate(F_flds(11, 2))
       F_flds(1,:) = (/'Faxa_taux ', 'Foxx_taux'/)
       F_flds(2,:) = (/'Faxa_tauy ', 'Foxx_tauy'/)
-      F_flds(3,:) = (/'Foxx_sen', 'Foxx_sen'/)
-      F_flds(4,:) = (/'Foxx_evap', 'Foxx_evap'/)
-      F_flds(5,:) = (/'Foxx_lwnet', 'Foxx_lwnet'/)
-      F_flds(6,:) = (/'Foxx_swnet_vdr', 'Foxx_swnet_vdr'/)
-      F_flds(7,:) = (/'Foxx_swnet_vdf', 'Foxx_swnet_vdf'/)
-      F_flds(8,:) = (/'Foxx_swnet_idr', 'Foxx_swnet_idr'/)
-      F_flds(9,:) = (/'Foxx_swnet_idf', 'Foxx_swnet_idf'/)
-      F_flds(10,:) = (/'Foxx_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
-      F_flds(11,:) = (/'Foxx_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
+      F_flds(3,:) = (/'Faoa_sen', 'Foxx_sen'/)
+      F_flds(4,:) = (/'Faoa_evap', 'Foxx_evap'/)
+      F_flds(5,:) = (/'Faoa_lwnet', 'Foxx_lwnet'/)
+      F_flds(6,:) = (/'Faoa_swnet_vdr', 'Foxx_swnet_vdr'/)
+      F_flds(7,:) = (/'Faoa_swnet_vdf', 'Foxx_swnet_vdf'/)
+      F_flds(8,:) = (/'Faoa_swnet_idr', 'Foxx_swnet_idr'/)
+      F_flds(9,:) = (/'Faoa_swnet_idf', 'Foxx_swnet_idf'/)
+      F_flds(10,:) = (/'Faoa_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
+      F_flds(11,:) = (/'Faoa_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
@@ -366,7 +366,7 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
       S_flds = (/'Sa_pslv', & ! inst_zonal_wind_height10m
-               'So_duu10n' /) ! inst_temp_height_surface
+               'Sa_duu10n' /) ! inst_temp_height_surface
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compocn), trim(fldname), rc=rc) .and. &
@@ -386,15 +386,15 @@ module esmFldsExchange_accessesm_mod
 
       ! from atm
       allocate(F_flds(9, 2))
-      F_flds(1,:) = (/'Foxx_sen', 'Foxx_sen'/)
-      F_flds(2,:) = (/'Foxx_evap', 'Foxx_evap'/)
-      F_flds(3,:) = (/'Foxx_lwnet', 'Foxx_lwnet'/)
-      F_flds(4,:) = (/'Foxx_swnet_vdr', 'Foxx_swnet_vdr'/)
-      F_flds(5,:) = (/'Foxx_swnet_vdf', 'Foxx_swnet_vdf'/)
-      F_flds(6,:) = (/'Foxx_swnet_idr', 'Foxx_swnet_idr'/)
-      F_flds(7,:) = (/'Foxx_swnet_idf', 'Foxx_swnet_idf'/)
-      F_flds(8,:) = (/'Foxx_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
-      F_flds(9,:) = (/'Foxx_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
+      F_flds(1,:) = (/'Faoa_sen', 'Foxx_sen'/)
+      F_flds(2,:) = (/'Faoa_evap', 'Foxx_evap'/)
+      F_flds(3,:) = (/'Faoa_lwnet', 'Foxx_lwnet'/)
+      F_flds(4,:) = (/'Faoa_swnet_vdr', 'Foxx_swnet_vdr'/)
+      F_flds(5,:) = (/'Faoa_swnet_vdf', 'Foxx_swnet_vdf'/)
+      F_flds(6,:) = (/'Faoa_swnet_idr', 'Foxx_swnet_idr'/)
+      F_flds(7,:) = (/'Faoa_swnet_idf', 'Foxx_swnet_idf'/)
+      F_flds(8,:) = (/'Faoa_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
+      F_flds(9,:) = (/'Faoa_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
