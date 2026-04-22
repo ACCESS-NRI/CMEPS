@@ -163,7 +163,7 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
       S_flds = (/'Sa_pslv', &
-               'Sa_duu10n' /)
+               'So_duu10n' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -365,8 +365,8 @@ module esmFldsExchange_accessesm_mod
       ! to ocn: state fields
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
-      S_flds = (/'Sa_pslv', & ! inst_zonal_wind_height10m
-               'Sa_duu10n' /) ! inst_temp_height_surface
+      S_flds = (/'Sa_pslv', &
+               'So_duu10n' /)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compocn), trim(fldname), rc=rc) .and. &
