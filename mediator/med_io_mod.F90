@@ -1656,34 +1656,34 @@ contains
 
           deallocate(fldptr1_tmp)
 
-          else if (rank >= 2 .and. lungridded_nc ) then
-             ! Whole 2d/3d field is contained within one netcdf variable with this name
-             name1 = trim(lpre)//'_'//trim(itemc)
+       else if (rank >= 2 .and. lungridded_nc ) then
+          ! Whole 2d/3d field is contained within one netcdf variable with this name
+          name1 = trim(lpre)//'_'//trim(itemc)
 
-             rcode = pio_inq_varid(pioid, trim(name1), varid)
+          rcode = pio_inq_varid(pioid, trim(name1), varid)
+          if (rcode == pio_noerr) then
+             if (present(frame)) then
+                call pio_seterrorhandling(pioid,PIO_INTERNAL_ERROR)
+                call pio_setframe(pioid, varid, lframe)
+                call pio_seterrorhandling(pioid,PIO_BCAST_ERROR)
+             endif
+             call pio_read_darray(pioid, varid, iodesc, fldptr2, rcode)
              if (rcode /= pio_noerr) then
                 call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
                 ierr = pio_strerror(rcode, tmpstr)
-                call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_INFO, rc=rc)
-                fldptr2 = 0.0_r8
+                call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_ERROR, rc=rc)
              else
-                if (present(frame)) then
-                   call pio_seterrorhandling(pioid,PIO_INTERNAL_ERROR)
-                   call pio_setframe(pioid, varid, lframe)
-                   call pio_seterrorhandling(pioid,PIO_BCAST_ERROR)
-                endif
-                call pio_read_darray(pioid, varid, iodesc, fldptr2, rcode)
+                rcode = pio_get_att(pioid, varid, "_FillValue", lfillvalue)
                 if (rcode /= pio_noerr) then
-                   call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
-                   ierr = pio_strerror(rcode, tmpstr)
-                   call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_ERROR, rc=rc)
-                else
-                   rcode = pio_get_att(pioid, varid, "_FillValue", lfillvalue)
-                   if (rcode /= pio_noerr) then
-                      lfillvalue = fillvalue
-                   endif
-                   where (fldptr2 == lfillvalue) fldptr2 = 0.0_r8
+                   lfillvalue = fillvalue
+                endif
+                where (fldptr2 == lfillvalue) fldptr2 = 0.0_r8
              endif
+          else
+             call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
+             ierr = pio_strerror(rcode, tmpstr)
+             call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_INFO, rc=rc)
+             fldptr2 = 0.0_r8
           endif
        else if (rank == 1) then
           name1 = trim(lpre)//'_'//trim(itemc)
@@ -1770,7 +1770,7 @@ contains
        rcode = pio_inq_varndims(pioid, varid, ndims)
        if (rcode /= pio_noerr) then
          ierr = pio_strerror(rcode, tmpstr)
-         call shr_log_error(trim(subname)//' ERROR: '//trim(tmpstr), &
+         call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
             line=__LINE__, file=u_FILE_u, rc=rc)
          return
        endif
@@ -1787,7 +1787,7 @@ contains
        rcode = pio_inq_vardimid(pioid, varid, dimid(1:ndims))
        if (rcode /= pio_noerr) then
          ierr = pio_strerror(rcode, tmpstr)
-         call shr_log_error(trim(subname)//' ERROR: '//trim(tmpstr), &
+         call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
             line=__LINE__, file=u_FILE_u, rc=rc)
          return
        endif
@@ -1795,7 +1795,8 @@ contains
        rcode = pio_inq_dimlen(pioid, dimid(1), lnx)
        if (rcode /= pio_noerr) then
           ierr = pio_strerror(rcode, tmpstr)
-          call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), rc=rc)
+          call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
+            line=__LINE__, file=u_FILE_u, rc=rc)
        endif
        write(tmpstr,*) trim(subname),' lnx = ',lnx
        call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
@@ -1803,7 +1804,7 @@ contains
             rcode = pio_inq_dimlen(pioid, dimid(2), lny)
             if (rcode /= pio_noerr) then
                ierr = pio_strerror(rcode, tmpstr)
-               call shr_log_error(trim(subname)//' ERROR: '//trim(tmpstr), &
+               call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
                   line=__LINE__, file=u_FILE_u, rc=rc)
                return
             endif
@@ -1816,7 +1817,7 @@ contains
             rcode = pio_inq_dimlen(pioid, dimid(ndims), lni)
             if (rcode /= pio_noerr) then
                ierr = pio_strerror(rcode, tmpstr)
-               call shr_log_error(trim(subname)//' ERROR: '//trim(tmpstr), &
+               call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
                   line=__LINE__, file=u_FILE_u, rc=rc)
                return
             endif
