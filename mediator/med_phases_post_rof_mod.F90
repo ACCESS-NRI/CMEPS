@@ -552,6 +552,13 @@ contains
             reduceflag=ESMF_REDUCE_SUM, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
+        if (global_sum(1) < 1e-15_r8) &
+          call ESMF_LogWrite(trim(subname)//": error in rof2ocn_spread file, "//&
+            "Southern hemisphere sum is zero, or negative", ESMF_LOGMSG_ERROR)
+        if (global_sum(2) < 1e-15_r8) &
+          call ESMF_LogWrite(trim(subname)//": error in rof2ocn_spread file, "//&
+            "Northern hemisphere sum is zero, or negative", ESMF_LOGMSG_ERROR)
+
         ! adjust correction so that it's sums to 1 in each hemisphere
         do i = 1, size(areas)
           if (lats(i) < 0.0_r8) then
