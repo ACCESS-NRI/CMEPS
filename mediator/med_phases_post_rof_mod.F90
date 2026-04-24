@@ -48,7 +48,7 @@ module med_phases_post_rof_mod
 
   logical :: remove_negative_runoff_lnd
   logical :: remove_negative_runoff_glc
-  logical :: spread_rofi
+  logical :: spread_rofi_nh, spread_rofi_sh
   character(len=CL) :: rof2ocn_ice_spread
 
   character(len=9), parameter :: fields_to_remove_negative_runoff_lnd(2) = &
@@ -110,16 +110,18 @@ contains
     call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_ice_spread', value=rof2ocn_ice_spread, isPresent=isPresent, isSet=isSet, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     if (isPresent .and. isSet) then
-      spread_rofi = .true.
+      spread_rofi_nh = .true.
+      spread_rofi_sh = .true.
     else
-      spread_rofi = .false.
+      spread_rofi_nh = .false.
+      spread_rofi_sh = .false.
     end if
 
     if (maintask) then
       write(logunit,'(a,l7)') trim(subname)//' remove_negative_runoff_lnd = ', remove_negative_runoff_lnd
       write(logunit,'(a,l7)') trim(subname)//' remove_negative_runoff_glc = ', remove_negative_runoff_glc
-      write(logunit,'(a,l7)') trim(subname)//' spread_rofi = ', spread_rofi
-      if (spread_rofi) write(logunit,'(a)') trim(subname)//' rof2ocn_ice_spread = '//trim(rof2ocn_ice_spread)
+      write(logunit,'(a,l7)') trim(subname)//' spread_rofi = ', spread_rofi_nh
+      if (spread_rofi_nh) write(logunit,'(a)') trim(subname)//' rof2ocn_ice_spread = '//trim(rof2ocn_ice_spread)
     end if
 
 
@@ -154,8 +156,9 @@ contains
     end if
 
     ! unclear why this can't be in med_phases_post_rof_init, possibly pio not initialised
-    if (spread_rofi .and. first_time) then
+    if ((spread_rofi_nh .or. spread_rofi_nh) .and. first_time) then
         call med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
+        if (ChkErr(rc,__LINE__,u_FILE_u)) return
         first_time=.false.
     endif
 
@@ -192,7 +195,7 @@ contains
       end do
     end if
 
-    if (spread_rofi) then
+    if (spread_rofi_nh .or. spread_rofi_sh) then
       do n = 1, size(fields_to_spread_runoff)
         call ESMF_FieldBundleGet(FBrof_r, fieldName=trim(fields_to_spread_runoff(n)), isPresent=exists, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) then
@@ -204,7 +207,7 @@ contains
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
         else
           call shr_log_error(string=trim(subname)//" Runoff field to spread: "//trim(fields_to_spread_runoff(n))//" does not exist", line=__LINE__,file=u_FILE_u, rc=rc)
-          if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          return
         end if
       end do
     end if
@@ -552,23 +555,34 @@ contains
             reduceflag=ESMF_REDUCE_SUM, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-        if (global_sum(1) < 1e-15_r8) &
-          call ESMF_LogWrite(trim(subname)//": error in rof2ocn_spread file, "//&
-            "Southern hemisphere sum is zero, or negative", ESMF_LOGMSG_ERROR)
-        if (global_sum(2) < 1e-15_r8) &
-          call ESMF_LogWrite(trim(subname)//": error in rof2ocn_spread file, "//&
-            "Northern hemisphere sum is zero, or negative", ESMF_LOGMSG_ERROR)
+        if (global_sum(1) < (100.0_r8 * tiny(1.0_r8))) then
+          if (maintask) write(logunit,*) trim(subname)//": In rof2ocn_spread file, "//&
+            "Southern hemisphere sum is zero, or negative. Month = ",month, 'global_sum = ',global_sum(1)
+          spread_rofi_sh = .false.
+        endif
+        if (global_sum(2) < (100.0_r8 * tiny(1.0_r8))) then
+          if (maintask) write(logunit,*) trim(subname)//": In rof2ocn_spread file, "//&
+            "Northern hemisphere sum is zero, or negative. Month = ",month, 'global_sum = ',global_sum(2)
+          spread_rofi_nh = .false.
+        endif
 
         ! adjust correction so that it's sums to 1 in each hemisphere
         do i = 1, size(areas)
-          if (lats(i) < 0.0_r8) then
+          if (lats(i) < 0.0_r8 .and. spread_rofi_sh) then
             rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(1)
-          else
+          else if ( spread_rofi_nh ) then
             rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(2)
           end if
         end do
 
       enddo ! month
+
+      if ( .not. (spread_rofi_nh .or. spread_rofi_sh)) then
+          call shr_log_error(string=trim(subname)//": error in rof2ocn_spread file, "//&
+            "sum in each hemispheres is zero, or negative", line=__LINE__,file=u_FILE_u, rc=rc)
+          return
+        endif
+
     enddo
 
     if (dbug_flag > dbug_threshold) then
@@ -628,13 +642,20 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     local_sum = 0.0_r8
-    do n = 1, size(runoff_flux)
-      if (lats(n) < 0.0_r8) then
-        local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
-      else
-        local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
-      end if
-    end do
+    if (spread_rofi_sh) then
+      do n = 1, size(runoff_flux)
+        if (lats(n) < 0.0_r8) then
+          local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
+        end if
+      end do
+    end if
+    if (spread_rofi_nh) then
+      do n = 1, size(runoff_flux)
+        if (lats(n) > 0.0_r8) then
+          local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
+        end if
+      end do
+    end if
 
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -651,26 +672,42 @@ contains
     call fldbun_getdata2d(FBrof_pattern, trim(field_name), rof2ocn_spread, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    ! spead runoff by the saved pattern for the model month
-    do n = 1, size(runoff_flux)
-      if (lats(n) < 0.0_r8) then
-        runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(1)
-      else
-        runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(2)
-      end if
-    end do
+    ! spread runoff by the saved pattern for the model month
+    if (spread_rofi_sh) then
+      do n = 1, size(runoff_flux)
+        if (lats(n) < 0.0_r8) then
+            runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(1)
+        end if
+      end do
+    end if
+
+    if (spread_rofi_nh) then
+      do n = 1, size(runoff_flux)
+        if (lats(n) > 0.0_r8) then
+            runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(2)
+        end if
+      end do
+    end if
 
     if (dbug_flag > dbug_threshold) then
 
       ! calculate the new global sum (after correction), difference should be equal to 0
       local_sum = 0.0_r8
-      do n = 1, size(runoff_flux)
-        if (lats(n) < 0.0_r8) then
-          local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
-        else
-          local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
-        end if
-      end do
+      if (spread_rofi_sh) then
+        do n = 1, size(runoff_flux)
+          if (lats(n) < 0.0_r8) then
+            local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
+          end if
+        end do
+      end if
+
+      if (spread_rofi_nh) then
+        do n = 1, size(runoff_flux)
+          if (lats(n) > 0.0_r8) then
+            local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
+          end if
+        end do
+      end if
 
       call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
