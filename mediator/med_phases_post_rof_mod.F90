@@ -568,14 +568,14 @@ contains
 
         ! adjust correction so that it's sums to 1 in each hemisphere
         if (spread_rofi_sh) then
-          do n = 1, size(runoff_flux)
+          do i = 1, size(runoff_flux)
             if (lats(n) < 0.0_r8) then
               rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(1)
             end if
           end do
         end if
         if (spread_rofi_nh) then
-          do n = 1, size(runoff_flux)
+          do i = 1, size(runoff_flux)
             if (lats(n) >= 0.0_r8) then
               rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(2)
             end if
