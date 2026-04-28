@@ -683,7 +683,7 @@ contains
 
     if (spread_rofi_nh) then
       do n = 1, size(runoff_flux)
-        if (lats(n) > 0.0_r8) then
+        if (lats(n) >= 0.0_r8) then
             runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(2)
         end if
       end do
@@ -703,7 +703,7 @@ contains
 
       if (spread_rofi_nh) then
         do n = 1, size(runoff_flux)
-          if (lats(n) > 0.0_r8) then
+          if (lats(n) >= 0.0_r8) then
             local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
           end if
         end do
