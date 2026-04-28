@@ -156,7 +156,7 @@ contains
     end if
 
     ! unclear why this can't be in med_phases_post_rof_init, possibly pio not initialised
-    if ((spread_rofi_nh .or. spread_rofi_nh) .and. first_time) then
+    if ((spread_rofi_nh .or. spread_rofi_sh) .and. first_time) then
         call med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
         first_time=.false.
@@ -651,7 +651,7 @@ contains
     end if
     if (spread_rofi_nh) then
       do n = 1, size(runoff_flux)
-        if (lats(n) > 0.0_r8) then
+        if (lats(n) >= 0.0_r8) then
           local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
         end if
       end do
