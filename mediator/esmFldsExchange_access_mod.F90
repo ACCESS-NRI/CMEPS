@@ -467,15 +467,12 @@ module esmFldsExchange_access_mod
       deallocate(F_flds)
 
       ! precip
-      call addmap_from(compatm, 'Faxa_rainc', compocn, mapconsf, 'one', 'unset')
-      call addmap_from(compatm, 'Faxa_rainl', compocn, mapconsf, 'one', 'unset')
-      call addmrg_to(compocn, 'Faxa_rain' , mrg_from=compatm, mrg_fld='Faxa_rainc:Faxa_rainl', &
-               mrg_type='sum_with_weights', mrg_fracname='ofrac')
+      ! Use total precipitation instead of convective and resolved separately, since the two are just added together later anyway. 
+      ! This means that we're good regionally and globally with the same set of fields
+      call addmap_from(compatm, 'Faxa_rain', compocn, mapconsf, 'one', 'unset')
+      call addmrg_to(compocn,  'Faxa_rain', mrg_from=compatm, mrg_fld='Faxa_rain', &
+               mrg_type='copy_with_weights', mrg_fracname='ofrac')
       
-      call addmap_from(compatm, 'Faxa_snowc', compocn, mapconsf, 'one', 'unset')
-      call addmap_from(compatm, 'Faxa_snowl', compocn, mapconsf, 'one', 'unset')
-      call addmrg_to(compocn, 'Faxa_snow' , mrg_from=compatm, mrg_fld='Faxa_snowc:Faxa_snowl', &
-               mrg_type='sum_with_weights', mrg_fracname='ofrac')
       
       ! from ice
       ! call addmap_from(compice, 'Si_ifrac', compocn, mapfcopy, 'unset', 'unset') COMMENTED OUT FOR REGIONAL
