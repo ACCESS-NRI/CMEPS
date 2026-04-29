@@ -474,7 +474,6 @@ contains
     type(ESMF_field) :: field_l                ! climatology, 12 months
     real(r8), pointer   :: areas(:), lats(:)
     real(r8), pointer   :: rof2ocn_spread(:,:)
-    real(r8), pointer   :: runoff_flux(:)  ! temporary 1d pointer
     real(r8)            :: local_sum(2), global_sum(2) ! Antarctic, Greenland (frozen) runoff
     integer :: n, i, month
 
@@ -568,15 +567,15 @@ contains
 
         ! adjust correction so that it's sums to 1 in each hemisphere
         if (spread_rofi_sh) then
-          do i = 1, size(runoff_flux)
-            if (lats(n) < 0.0_r8) then
+          do i = 1, size(areas)
+            if (lats(i) < 0.0_r8) then
               rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(1)
             end if
           end do
         end if
         if (spread_rofi_nh) then
-          do i = 1, size(runoff_flux)
-            if (lats(n) >= 0.0_r8) then
+          do i = 1, size(areas)
+            if (lats(i) >= 0.0_r8) then
               rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(2)
             end if
           end do
