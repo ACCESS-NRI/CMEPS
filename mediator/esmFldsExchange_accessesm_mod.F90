@@ -16,6 +16,10 @@ module esmFldsExchange_accessesm_mod
     ! This is a mediator specific routine that determines ALL possible
     ! fields exchanged between components and their associated routing,
     ! mapping and merging
+
+    ! In general, first order conservative remapping is used for flux fields
+    ! and bilinear remapping is used for flux fields. Wind stress is a special case
+    ! where a higher order patch mapping is used.
     !---------------------------------------------------------------------
 
     implicit none
