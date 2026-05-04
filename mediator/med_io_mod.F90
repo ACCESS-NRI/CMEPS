@@ -7,12 +7,13 @@ module med_io_mod
   use med_kind_mod          , only : CX=>SHR_KIND_CX, CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, I8=>SHR_KIND_I8, R8=>SHR_KIND_R8
   use med_kind_mod          , only : R4=>SHR_KIND_R4
   use med_constants_mod     , only : fillvalue => SHR_CONST_SPVAL
-  use ESMF                  , only : ESMF_VM, ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_LogFoundError
+  use ESMF                  , only : ESMF_VM, ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_LOGMSG_ERROR, ESMF_LogFoundError
   use ESMF                  , only : ESMF_SUCCESS, ESMF_LOGERR_PASSTHRU
   use ESMF                  , only : ESMF_VMGetCurrent, ESMF_VMGet, ESMF_VMBroadCast, ESMF_Finalize
   use NUOPC                 , only : NUOPC_FieldDictionaryGetEntry
   use NUOPC                 , only : NUOPC_FieldDictionaryHasEntry
   use pio                   , only : file_desc_t, iosystem_desc_t
+  use pio                   , only : pio_seterrorhandling, PIO_BCAST_ERROR, PIO_INTERNAL_ERROR
   use med_internalstate_mod , only : logunit, med_id, maintask
   use med_constants_mod     , only : dbug_flag    => med_constants_dbug_flag
   use med_methods_mod       , only : FB_getFieldN => med_methods_FB_getFieldN
@@ -20,6 +21,8 @@ module med_io_mod
   use med_methods_mod       , only : FB_getNameN  => med_methods_FB_getNameN
   use med_utils_mod         , only : chkerr       => med_utils_ChkErr
   use shr_log_mod           , only : shr_log_error
+  use shr_sys_mod           , only : shr_sys_abort
+
   implicit none
   private
 
@@ -495,10 +498,10 @@ contains
     ! open netcdf file
     !---------------
 
-    use pio , only : PIO_IOTYPE_PNETCDF, PIO_IOTYPE_NETCDF, PIO_BCAST_ERROR, PIO_INTERNAL_ERROR
+    use pio , only : PIO_IOTYPE_PNETCDF, PIO_IOTYPE_NETCDF
     use pio , only : pio_openfile, pio_createfile, PIO_GLOBAL, pio_enddef
     use pio , only : pio_put_att, pio_redef, pio_get_att
-    use pio , only : pio_seterrorhandling, pio_file_is_open, pio_clobber, pio_write, pio_noclobber
+    use pio , only : pio_file_is_open, pio_clobber, pio_write, pio_noclobber
 
     ! input/output arguments
     character(*),            intent(in) :: filename
@@ -1461,7 +1464,7 @@ contains
   end subroutine med_io_write_time
 
   !===============================================================================
-  subroutine med_io_read_FB(filename, vm, FB, pre, frame, rc)
+  subroutine med_io_read_FB(filename, vm, FB, pre, frame, ungridded_nc, rc)
 
     !---------------
     ! Read FB from netcdf file
@@ -1472,22 +1475,25 @@ contains
     use ESMF , only : ESMF_FieldBundleIsCreated, ESMF_FieldBundleGet
     use ESMF , only : ESMF_FieldGet, ESMF_MeshGet, ESMF_DistGridGet
     use pio  , only : file_desc_T, var_desc_t, io_desc_t, pio_nowrite, pio_openfile
-    use pio  , only : pio_noerr, PIO_BCAST_ERROR, PIO_INTERNAL_ERROR
+    use pio  , only : pio_noerr
     use pio  , only : pio_inq_varid
-    use pio  , only : pio_double, pio_get_att, pio_seterrorhandling, pio_freedecomp, pio_closefile
-    use pio  , only : pio_read_darray, pio_offset_kind, pio_setframe
+    use pio  , only : pio_double, pio_get_att, pio_freedecomp, pio_closefile
+    use pio  , only : pio_read_darray, pio_offset_kind, pio_setframe, pio_strerror
 
     ! input/output arguments
     character(len=*)                        ,intent(in)  :: filename
     type(ESMF_VM)                           ,intent(in)  :: vm
     type(ESMF_FieldBundle)                  ,intent(in)  :: FB       ! data to be read
     character(len=*)              ,optional ,intent(in)  :: pre      ! prefix to variable name
+    logical                       ,optional ,intent(in)  :: ungridded_nc
+         ! if true : ungridded dim in fields is dimension in netcdf file, 
+         ! if false: ungridded_dim is provided in separate variables with the index appended
     integer(kind=PIO_OFFSET_KIND) ,optional ,intent(in)  :: frame
     integer                                 ,intent(out) :: rc
 
     ! local variables
     type(ESMF_Field)              :: lfield
-    integer                       :: rcode
+    integer                       :: rcode, ierr
     integer                       :: nf
     integer                       :: k,n,l
     type(file_desc_t)             :: pioid
@@ -1503,12 +1509,13 @@ contains
     character(CL)                 :: tmpstr
     character(len=16)             :: cnumber
     integer(kind=Pio_Offset_Kind) :: lframe
-    integer                       :: ungriddedUBound(1) ! currently the size must equal 1 for rank 2 fieldds
-    integer                       :: gridToFieldMap(1)  ! currently the size must equal 1 for rank 2 fieldds
+    integer                       :: ungriddedUBound(1) ! currently the size must equal 1 for rank 2 fields
+    integer                       :: gridToFieldMap(1)  ! currently the size must equal 1 for rank 2 fields
+    logical                       :: lungridded_nc
     character(*),parameter :: subName = '(med_io_read_FB) '
     !-------------------------------------------------------------------------------
     rc = ESMF_Success
-    call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(subname)//": called", ESMF_LOGMSG_INFO, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
     lpre = ' '
@@ -1520,11 +1527,16 @@ contains
     else
        lframe = 1
     endif
+    if (present(ungridded_nc)) then
+      lungridded_nc = ungridded_nc
+    else
+      lungridded_nc = .false.
+    endif
     if (.not. ESMF_FieldBundleIsCreated(FB,rc=rc)) then
        call ESMF_LogWrite(trim(subname)//" FB "//trim(lpre)//" not created", ESMF_LOGMSG_INFO)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        if (dbug_flag > 5) then
-          call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
+          call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO, rc=rc)
           if (chkerr(rc,__LINE__,u_FILE_u)) return
        endif
        return
@@ -1533,10 +1545,10 @@ contains
     call ESMF_FieldBundleGet(FB, fieldCount=nf, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     write(tmpstr,*) subname//' field count = '//trim(lpre),nf
-    call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
+    call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO, rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
     if (nf < 1) then
-       call ESMF_LogWrite(trim(subname)//" FB "//trim(lpre)//" empty", ESMF_LOGMSG_INFO)
+       call ESMF_LogWrite(trim(subname)//" FB "//trim(lpre)//" empty", ESMF_LOGMSG_INFO, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        if (dbug_flag > 5) then
           call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
@@ -1547,7 +1559,7 @@ contains
 
     if (med_io_file_exists(vm, trim(filename))) then
        rcode = pio_openfile(io_subsystem, pioid, pio_iotype, trim(filename),pio_nowrite)
-       call ESMF_LogWrite(trim(subname)//' open file '//trim(filename), ESMF_LOGMSG_INFO)
+       call ESMF_LogWrite(trim(subname)//' open file '//trim(filename), ESMF_LOGMSG_INFO, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
     else
        call shr_log_error(trim(subname)//' ERROR: file invalid '//trim(filename), &
@@ -1568,17 +1580,20 @@ contains
           call ESMF_FieldBundleGet(FB, itemc,  field=lfield, rc=rc)
           if (chkerr(rc,__LINE__,u_FILE_u)) return
           call ESMF_FieldGet(lfield, rank=rank, rc=rc)
+          if (lungridded_nc .and. rank == 1) then
+            call shr_sys_abort(trim(subname)//' ERROR: ungridded_nc = true but field only contains one dimension', rc=rc)
+          endif
           if (chkerr(rc,__LINE__,u_FILE_u)) return
-          if (rank == 2) then
+          if (rank==2 .and. .not. lungridded_nc) then
              name1 = trim(lpre)//'_'//trim(itemc)//'1'
-          else if (rank == 1) then
+          else
              name1 = trim(lpre)//'_'//trim(itemc)
           end if
-          call med_io_read_init_iodesc(FB, name1, pioid, iodesc, rc)
+          call med_io_read_init_iodesc(lfield, trim(name1), pioid, iodesc, ungridded_nc=lungridded_nc, rc=rc)
           if (chkerr(rc,__LINE__,u_FILE_u)) return
        end if
 
-       call ESMF_LogWrite(trim(subname)//' reading field '//trim(itemc), ESMF_LOGMSG_INFO)
+       call ESMF_LogWrite(trim(subname)//' reading field '//trim(itemc), ESMF_LOGMSG_INFO, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
        ! Get pointer to field bundle field
@@ -1587,7 +1602,7 @@ contains
             fldptr1=fldptr1, fldptr2=fldptr2, rank=rank, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-       if (rank == 2) then
+       if (rank == 2 .and. .not. lungridded_nc ) then
 
           ! Determine the size of the ungridded dimension and the
           ! index where the undistributed dimension is located
@@ -1611,18 +1626,25 @@ contains
 
              rcode = pio_inq_varid(pioid, trim(name1), varid)
              if (rcode == pio_noerr) then
-                call ESMF_LogWrite(trim(subname)//' read field '//trim(name1), ESMF_LOGMSG_INFO)
+                call ESMF_LogWrite(trim(subname)//' read field '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
                 if (chkerr(rc,__LINE__,u_FILE_u)) return
                 call pio_setframe(pioid, varid, lframe)
                 call pio_read_darray(pioid, varid, iodesc, fldptr1_tmp, rcode)
-                rcode = pio_get_att(pioid, varid, "_FillValue", lfillvalue)
                 if (rcode /= pio_noerr) then
-                   lfillvalue = fillvalue
+                   call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
+                   ierr = pio_strerror(rcode, tmpstr)
+                   call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_ERROR, rc=rc)
+                else
+                   rcode = pio_get_att(pioid, varid, "_FillValue", lfillvalue)
+                   if (rcode /= pio_noerr) then
+                      lfillvalue = fillvalue
+                   endif
+                   where (fldptr1_tmp == lfillvalue) fldptr1_tmp = 0.0_r8
                 endif
-                do l = 1,size(fldptr1_tmp)
-                   if (fldptr1_tmp(l) == lfillvalue) fldptr1_tmp(l) = 0.0_r8
-                enddo
              else
+                call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
+                ierr = pio_strerror(rcode, tmpstr)
+                call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_ERROR, rc=rc)
                 fldptr1_tmp = 0.0_r8
              endif
              if (gridToFieldMap(1) == 1) then
@@ -1634,6 +1656,35 @@ contains
 
           deallocate(fldptr1_tmp)
 
+       else if (rank >= 2 .and. lungridded_nc ) then
+          ! Whole 2d/3d field is contained within one netcdf variable with this name
+          name1 = trim(lpre)//'_'//trim(itemc)
+
+          rcode = pio_inq_varid(pioid, trim(name1), varid)
+          if (rcode == pio_noerr) then
+             if (present(frame)) then
+                call pio_seterrorhandling(pioid,PIO_INTERNAL_ERROR)
+                call pio_setframe(pioid, varid, lframe)
+                call pio_seterrorhandling(pioid,PIO_BCAST_ERROR)
+             endif
+             call pio_read_darray(pioid, varid, iodesc, fldptr2, rcode)
+             if (rcode /= pio_noerr) then
+                call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
+                ierr = pio_strerror(rcode, tmpstr)
+                call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_ERROR, rc=rc)
+             else
+                rcode = pio_get_att(pioid, varid, "_FillValue", lfillvalue)
+                if (rcode /= pio_noerr) then
+                   lfillvalue = fillvalue
+                endif
+                where (fldptr2 == lfillvalue) fldptr2 = 0.0_r8
+             endif
+          else
+             call ESMF_LogWrite(trim(subname)//' failed to read variable '//trim(name1), ESMF_LOGMSG_INFO, rc=rc)
+             ierr = pio_strerror(rcode, tmpstr)
+             call ESMF_LogWrite(trim(subname)//trim(tmpstr), ESMF_LOGMSG_INFO, rc=rc)
+             fldptr2 = 0.0_r8
+          endif
        else if (rank == 1) then
           name1 = trim(lpre)//'_'//trim(itemc)
 
@@ -1647,13 +1698,14 @@ contains
              if (rcode /= pio_noerr) then
                 lfillvalue = fillvalue
              endif
-             do n = 1,size(fldptr1)
-                if (fldptr1(n) == lfillvalue) fldptr1(n) = 0.0_r8
-             enddo
+             where (fldptr1 == lfillvalue) fldptr1 = 0.0_r8
           else
              fldptr1 = 0.0_r8
           endif
-       end if
+       else
+          write(tmpstr,*) rank
+          call shr_log_error(trim(subname)//': rank='//trim(tmpstr)//' of field '//trim(itemc)//' not supported', rc=rc)
+      end if
 
     enddo ! end of loop over fields
     call pio_seterrorhandling(pioid,PIO_INTERNAL_ERROR)
@@ -1668,101 +1720,170 @@ contains
   end subroutine med_io_read_FB
 
   !===============================================================================
-  subroutine med_io_read_init_iodesc(FB, name1, pioid, iodesc, rc)
+  subroutine med_io_read_init_iodesc(field, name1, pioid, iodesc, ungridded_nc, rc)
 
     use ESMF , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
-    use ESMF , only : ESMF_FieldBundleIsCreated, ESMF_FieldBundle, ESMF_Mesh, ESMF_DistGrid
+    use ESMF , only : ESMF_FieldBundleIsCreated, ESMF_Mesh, ESMF_DistGrid
     use ESMF , only : ESMF_FieldBundleGet, ESMF_FieldGet, ESMF_MeshGet, ESMF_DistGridGet
     use ESMF , only : ESMF_Field, ESMF_FieldGet, ESMF_AttributeGet
     use pio  , only : file_desc_T, var_desc_t, io_desc_t, pio_nowrite, pio_openfile
-    use pio  , only : pio_noerr, pio_inq_varndims
+    use pio  , only : pio_noerr, pio_strerror, pio_inq_varndims
     use pio  , only : pio_inq_dimid, pio_inq_dimlen, pio_inq_varid, pio_inq_vardimid
-    use pio  , only : pio_double, pio_seterrorhandling, pio_initdecomp
+    use pio  , only : pio_double, pio_initdecomp
 
     ! input/output variables
-    type(ESMF_FieldBundle) , intent(in)    :: FB
+    type(ESMF_Field)       , intent(in)    :: field
     character(len=*)       , intent(in)    :: name1
-    type(file_desc_t)      , intent(in)    :: pioid
+    type(file_desc_t)      , intent(inout) :: pioid
     type(io_desc_t)        , intent(inout) :: iodesc
+    logical         ,optional ,intent(in)  :: ungridded_nc
     integer                , intent(out)   :: rc
 
     ! local variables
-    type(ESMF_Field)    :: field
     type(ESMF_Mesh)     :: mesh
     type(ESMF_Distgrid) :: distgrid
-    integer             :: rcode
-    integer             :: ns,ng
+    integer             :: rcode, ierr
+    integer             :: ns,i
     integer             :: ndims
     integer, pointer    :: dimid(:)
     type(var_desc_t)    :: varid
-    integer             :: lnx,lny
-    integer, pointer    :: minIndexPTile(:,:)
+    integer, allocatable :: gdims(:)
+    integer             :: lnx,lny,lni
     integer, pointer    :: maxIndexPTile(:,:)
     integer             :: dimCount, tileCount
     integer, pointer    :: Dof(:)
+    logical             :: lungridded_nc
     character(CL)       :: tmpstr
     character(*),parameter :: subName = '(med_io_read_init_iodesc) '
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
+    if (present(ungridded_nc)) then
+      lungridded_nc = ungridded_nc
+    else 
+      lungridded_nc = .false.
+    endif
 
     rcode = pio_inq_varid(pioid, trim(name1), varid)
     if (rcode == pio_noerr) then
 
        rcode = pio_inq_varndims(pioid, varid, ndims)
+       if (rcode /= pio_noerr) then
+         ierr = pio_strerror(rcode, tmpstr)
+         call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
+            line=__LINE__, file=u_FILE_u, rc=rc)
+         return
+       endif
+
        write(tmpstr,*) trim(subname),' ndims = ',ndims
        call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
 
+       if (ndims>3 .or. ndims <1) then
+          write(tmpstr,*) ndims
+          call shr_sys_abort(trim(subname)//' ERROR: ndims = '//trim(tmpstr)//' is not supported. ', rc=rc)
+       endif
+
        allocate(dimid(ndims))
        rcode = pio_inq_vardimid(pioid, varid, dimid(1:ndims))
+       if (rcode /= pio_noerr) then
+         ierr = pio_strerror(rcode, tmpstr)
+         call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
+            line=__LINE__, file=u_FILE_u, rc=rc)
+         return
+       endif
+
        rcode = pio_inq_dimlen(pioid, dimid(1), lnx)
+       if (rcode /= pio_noerr) then
+          ierr = pio_strerror(rcode, tmpstr)
+          call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
+            line=__LINE__, file=u_FILE_u, rc=rc)
+       endif
        write(tmpstr,*) trim(subname),' lnx = ',lnx
        call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
-       if (ndims>=2) then
-          rcode = pio_inq_dimlen(pioid, dimid(2), lny)
+       if ( (ndims==2 .and. .not. lungridded_nc) .or. ndims>2 ) then !2nd dimension is gridded
+            rcode = pio_inq_dimlen(pioid, dimid(2), lny)
+            if (rcode /= pio_noerr) then
+               ierr = pio_strerror(rcode, tmpstr)
+               call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
+                  line=__LINE__, file=u_FILE_u, rc=rc)
+               return
+            endif
+            write(tmpstr,*) trim(subname),' lny = ',lny
+            call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
        else
-          lny = 1
-       end if
+         lny = 1 !default
+       endif
+       if (lungridded_nc) then !2nd/3rd dimension is ungridded
+            rcode = pio_inq_dimlen(pioid, dimid(ndims), lni)
+            if (rcode /= pio_noerr) then
+               ierr = pio_strerror(rcode, tmpstr)
+               call shr_sys_abort(trim(subname)//' ERROR: '//trim(tmpstr), &
+                  line=__LINE__, file=u_FILE_u, rc=rc)
+               return
+            endif
+            write(tmpstr,*) trim(subname),' lni = ',lni
+            call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
+       else
+         lni = 1 !default
+       endif
        deallocate(dimid)
 
-       write(tmpstr,*) trim(subname),' lny = ',lny
-       call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
-       ng = lnx * lny
-       call FB_getFieldN(FB, 1, field, rc=rc)
-       if (chkerr(rc,__LINE__,u_FILE_u)) return
+       ! get the number of dimensions in the grid
        call ESMF_FieldGet(field, mesh=mesh, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call ESMF_MeshGet(mesh, elementDistgrid=distgrid, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        call ESMF_DistGridGet(distgrid, dimCount=dimCount, tileCount=tileCount, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-       allocate(minIndexPTile(dimCount, tileCount), maxIndexPTile(dimCount, tileCount))
-       call ESMF_DistGridGet(distgrid, minIndexPTile=minIndexPTile, &
-            maxIndexPTile=maxIndexPTile, rc=rc)
+       ! check that grid and data size match
+       allocate(maxIndexPTile(dimCount, tileCount))
+       call ESMF_DistGridGet(distgrid, maxIndexPTile=maxIndexPTile, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
-
-       if (ng > maxval(maxIndexPTile)) then
+       if ((lnx * lny) > maxval(maxIndexPTile)) then
           write(tmpstr,*) subname,' WARNING: dimensions do not match', lnx, lny, maxval(maxIndexPTile)
           call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
           ! This should not be an error for say CTSM which does not send a global grid
        endif
+       deallocate(maxIndexPTile)
 
+       ! create PIO decomposition
+       ! get number of elements in local grid
        call ESMF_DistGridGet(distgrid, localDE=0, elementCount=ns, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-       allocate(dof(ns))
+       if ( lungridded_nc ) then
+         allocate(dof(ns*lni))
+       else
+         allocate(dof(ns))
+       endif
+       ! get 1d indeces of local grid on global grid (dof)
        call ESMF_DistGridGet(distgrid, localDE=0, seqIndexList=dof, rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+
+       if ( lungridded_nc ) then
+         ! dof is index for i=1, cycle around all i (as i is ungridded)
+         do i=2,lni
+            dof((i-1)*ns+1:i*ns) = dof(1:ns) + (i-1)*lnx*lny
+         enddo
+       endif
        write(tmpstr,*) subname,' dof = ',ns,size(dof),dof(1),dof(ns)  !,minval(dof),maxval(dof)
        call ESMF_LogWrite(trim(tmpstr), ESMF_LOGMSG_INFO)
 
-       call pio_initdecomp(io_subsystem, pio_double, (/lnx,lny/), dof, iodesc)
-       deallocate(dof)
+       allocate(gdims(ndims))
+       if (ndims==1) gdims = (/lnx/)
+       if (ndims==2 .and. .not. lungridded_nc) gdims = (/lnx, lny/)
+       if (ndims==2 .and. lungridded_nc) gdims = (/lnx, lni/)
+       if (ndims==3 .and. lni > 1) gdims = (/lnx,lny,lni/)
+       if (ndims==3 .and. lni == 1) gdims = (/lnx,lny/)
 
-       deallocate(minIndexPTile, maxIndexPTile)
+       call pio_seterrorhandling(pioid,PIO_INTERNAL_ERROR)
+       call pio_initdecomp(io_subsystem, pio_double, gdims, dof, iodesc)
+       call pio_seterrorhandling(pioid, PIO_BCAST_ERROR)
+
+       deallocate(dof, gdims)
     else
-       call shr_log_error(trim(subname)//' ERROR: '//trim(name1)//' is not present, aborting ', rc=rc)
-       return
+       ierr = pio_strerror(rcode, tmpstr)
+       call shr_sys_abort(trim(subname)//' ERROR: '//trim(name1)//' is not present, aborting. '//trim(tmpstr), rc=rc)
     end if ! end if rcode check
 
   end subroutine med_io_read_init_iodesc
@@ -1800,7 +1921,7 @@ contains
     ! Read 1d integer array from netcdf file
     !---------------
 
-    use pio , only : var_desc_t, file_desc_t, PIO_BCAST_ERROR, PIO_INTERNAL_ERROR, pio_seterrorhandling
+    use pio , only : var_desc_t
     use pio , only : pio_get_var, pio_inq_varid, pio_get_att, pio_openfile
     use pio , only : pio_nowrite, pio_openfile, pio_global
     use pio , only : pio_closefile
@@ -1884,8 +2005,8 @@ contains
     ! Read 1d double array from netcdf file
     !---------------
 
-    use pio , only : file_desc_t, var_desc_t, pio_openfile, pio_closefile, pio_seterrorhandling
-    use pio , only : PIO_BCAST_ERROR, PIO_INTERNAL_ERROR, pio_inq_varid, pio_get_var
+    use pio , only : var_desc_t, pio_openfile, pio_closefile
+    use pio , only : pio_inq_varid, pio_get_var
     use pio , only : pio_nowrite, pio_openfile, pio_global, pio_get_att
 
     ! input/output arguments
@@ -1940,7 +2061,7 @@ contains
     ! Read char string from netcdf file
     !---------------
 
-    use pio , only : file_desc_t, var_desc_t, pio_seterrorhandling, PIO_BCAST_ERROR, PIO_INTERNAL_ERROR
+    use pio , only : var_desc_t
     use pio , only : pio_closefile, pio_inq_varid, pio_get_var
     use pio , only : pio_openfile, pio_global, pio_get_att, pio_nowrite
 
