@@ -506,7 +506,7 @@ module esmFldsExchange_accessesm_mod
                  'So_s ', & ! sea surface salinity
                  'So_u', & ! ocean surface zonal current
                  'So_v', & ! ocean surface meridional current
-                 'Fioo_q' /) ! inst_temp_height_surface
+                 'Fioo_q' /) ! Freezing/melting potential
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compice),trim(fldname),rc=rc) .and. &
