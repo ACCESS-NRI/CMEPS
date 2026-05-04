@@ -159,7 +159,7 @@ module esmFldsExchange_accessesm_mod
       !=====================================================================
 
       ! ---------------------------------------------------------------------
-      ! to ocn: state fields
+      ! to ocn: state fields from atm
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
       S_flds = (/'Sa_pslv', &
@@ -172,10 +172,9 @@ module esmFldsExchange_accessesm_mod
       deallocate(S_flds)
 
       ! ---------------------------------------------------------------------
-      ! to ocn: flux fields
+      ! to ocn: flux fields from atm
       ! ---------------------------------------------------------------------
 
-      ! from atm
       allocate(F_flds(11, 2))
       F_flds(1,:) = (/'Faxa_taux ', 'Foxx_taux'/)
       F_flds(2,:) = (/'Faxa_tauy ', 'Foxx_tauy'/)
@@ -198,7 +197,10 @@ module esmFldsExchange_accessesm_mod
       deallocate(F_flds)
 
 
-      ! from ice
+      ! ---------------------------------------------------------------------
+      ! to ocn: fields from ice
+      ! ---------------------------------------------------------------------
+
       allocate(F_flds(6, 2))
       F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/) ! salt flux sea-ice to ocean
       F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
@@ -219,10 +221,9 @@ module esmFldsExchange_accessesm_mod
       !=====================================================================
 
       ! ---------------------------------------------------------------------
-      ! to ice: state fields
+      ! to ice: fields from ocn
       ! ---------------------------------------------------------------------
 
-      ! from ocn
       allocate(S_flds(7))
       S_flds = (/'So_dhdx', &
                  'So_dhdy', &
@@ -239,7 +240,7 @@ module esmFldsExchange_accessesm_mod
       deallocate(S_flds)
 
       ! ---------------------------------------------------------------------
-      ! to ice: flux fields
+      ! to ice: fields from atm
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(5, 2))
@@ -271,8 +272,12 @@ module esmFldsExchange_accessesm_mod
       call addfld_to(compice, 'Faxa_rain')
       call addfld_to(compice, 'Faxa_snow')
 
-      call addfld_to(compice, 'Faii_taux')
-      call addfld_to(compice, 'Faii_tauy')
+      ! ---------------------------------------------------------------------
+      ! atm/ice wind stress
+      ! ---------------------------------------------------------------------
+
+      call addfld_to(compice, 'Faia_taux')
+      call addfld_to(compice, 'Faia_tauy')
 
       call ESMF_LogWrite(trim(subname)//": done", ESMF_LOGMSG_INFO)
 
@@ -322,14 +327,22 @@ module esmFldsExchange_accessesm_mod
       ! FIELDS TO ATMOSPHERE
       !=====================================================================
 
-      allocate(S_flds(3))
-      S_flds = (/'So_t', 'So_u', 'So_v'/)
+      fldname = trim('So_t')
+      if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
+         fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname), rc=rc) &
+        ) then
+        call addmap_from(compocn, trim(fldname), compatm, mapbilnr, 'one', 'unset')
+        call addmrg_to(compatm, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
+     end if
+
+      allocate(S_flds(2))
+      S_flds = (/'So_u', 'So_v'/)
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
              fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname), rc=rc) &
             ) then
-            call addmap_from(compocn, trim(fldname), compatm, mapconsf, 'ofrac', 'unset')
+            call addmap_from(compocn, trim(fldname), compatm, mappatch, 'one', 'unset')
             call addmrg_to(compatm, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
          end if
       end do
@@ -381,10 +394,9 @@ module esmFldsExchange_accessesm_mod
       deallocate(S_flds)
 
       ! ---------------------------------------------------------------------
-      ! to ocn: flux fields
+      ! to ocn: flux fields from atm
       ! ---------------------------------------------------------------------
 
-      ! from atm
       allocate(F_flds(9, 2))
       F_flds(1,:) = (/'Faoa_sen', 'Foxx_sen'/)
       F_flds(2,:) = (/'Faoa_evap', 'Foxx_evap'/)
@@ -428,8 +440,11 @@ module esmFldsExchange_accessesm_mod
          call addmrg_to(compocn, 'Faxa_snow' , mrg_from=compatm, mrg_fld='Faxa_snowc:Faxa_snowl', &
                mrg_type='sum_with_weights', mrg_fracname='ofrac')
       end if
-      
-      ! from ice
+
+      ! ---------------------------------------------------------------------
+      ! to ocn: fields from ice
+      ! ---------------------------------------------------------------------
+
       allocate(F_flds(4, 2))
       F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
       F_flds(2,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
@@ -481,10 +496,9 @@ module esmFldsExchange_accessesm_mod
       !=====================================================================
 
       ! ---------------------------------------------------------------------
-      ! to ice: state fields
+      ! to ice: fields from ocn
       ! ---------------------------------------------------------------------
 
-      ! from ocn
       allocate(S_flds(7))
       S_flds = (/'So_dhdx', & ! inst_zonal_wind_height10m
                  'So_dhdy', & ! inst_merid_wind_height10m
@@ -507,10 +521,9 @@ module esmFldsExchange_accessesm_mod
       deallocate(S_flds)
 
       ! ---------------------------------------------------------------------
-      ! to ice: flux fields
+      ! to ice: fields from atm
       ! ---------------------------------------------------------------------
 
-      ! from atm
       allocate(F_flds(5, 2))
       F_flds(1,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
       F_flds(2,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
@@ -533,18 +546,18 @@ module esmFldsExchange_accessesm_mod
       deallocate(F_flds)
 
       ! wind stress
-      if (fldchk(is_local%wrap%FBExp(compice), trim('Faii_taux'), rc=rc) .and. &
+      if (fldchk(is_local%wrap%FBExp(compice), trim('Faia_taux'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
          ) then
          call addmap_from(compatm, trim('Faxa_taux'), compice, mappatch, 'one', 'unset')
-         call addmrg_to(compice, trim('Faii_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='copy')
+         call addmrg_to(compice, trim('Faia_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='copy')
       end if
 
-      if (fldchk(is_local%wrap%FBExp(compice), trim('Faii_tauy'), rc=rc) .and. &
+      if (fldchk(is_local%wrap%FBExp(compice), trim('Faia_tauy'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
          ) then
          call addmap_from(compatm, trim('Faxa_tauy'), compice, mappatch, 'one', 'unset')
-         call addmrg_to(compice, trim('Faii_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='copy')
+         call addmrg_to(compice, trim('Faia_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='copy')
       end if
 
       ! precip
