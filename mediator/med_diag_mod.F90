@@ -93,9 +93,7 @@ module med_diag_mod
   character(*), parameter :: FA0  = "('    ',12x,6(6x,a8,1x))"
   character(*), parameter :: FA1  = "('    ',a12,6f15.8)"
   character(*), parameter :: FA0r = "('    ',12x,8(6x,a8,1x))"
-  character(*), parameter :: FA0r1 = "('    ',12x,9(2x,a12,1x))"
   character(*), parameter :: FA1r = "('    ',a12,8f15.8)"
-  character(*), parameter :: FA1r1 = "('    ',a12,9f15.8)"
   character(*), parameter :: FA0s = "('    ',12x,8(7x,a8,2x))"
   character(*), parameter :: FA1s = "('    ',a12,8g18.8)"
 
@@ -1630,10 +1628,10 @@ contains
     endif
 #endif
 
-   !  if (firstcall) then
-   !     firstcall = .false.
-   !     return
-   !  endif
+    if (firstcall) then
+       firstcall = .false.
+       return
+    endif
 
     sumdone = .false.
     do ip = 1,size(budget_diags%periods)
@@ -1972,7 +1970,6 @@ contains
     real(r8) :: net_water_ice_nh , sum_net_water_ice_nh
     real(r8) :: net_water_ice_sh , sum_net_water_ice_sh
     real(r8) :: net_water_tot    , sum_net_water_tot
-    real(r8) :: net_water_ocnice    , sum_net_water_ocnice
     real(r8) :: net_heat_atm     , sum_net_heat_atm
     real(r8) :: net_heat_lnd     , sum_net_heat_lnd
     real(r8) :: net_heat_rof     , sum_net_heat_rof
@@ -1999,7 +1996,7 @@ contains
     write(diagunit,FAH) subname,'NET AREA BUDGET (m2/m2): period = ',&
          trim(budget_diags%periods(ip)%name),&
          ': date = ',date,tod
-    write(diagunit,FA0) '     atm','     lnd','     ocn','  ice nh','  ice sh',' *SUM*'
+    write(diagunit,FA0) '     atm','     lnd','     ocn','  ice nh','  ice sh',' *SUM*  '
     atm_area    = data(f_area,c_atm_recv,ip)
     lnd_area    = data(f_area,c_lnd_recv,ip)
     ocn_area    = data(f_area,c_ocn_recv,ip)
@@ -2012,47 +2009,47 @@ contains
     ! write out net heat budgets
     ! -----------------------------
 
-   !  write(diagunit,*) ' '
-   !  write(diagunit,FAH) subname,'NET HEAT BUDGET (W/m2): period = ',&
-   !       trim(budget_diags%periods(ip)%name), ': date = ',date,tod
-   !  write(diagunit,FA0r) '     atm','     lnd','     rof','     ocn','  ice nh','  ice sh','     glc',' *SUM*  '
-   !  do nf = f_heat_beg, f_heat_end
-   !     net_heat_atm    = data(nf, c_atm_recv, ip) + data(nf, c_atm_send, ip)
-   !     net_heat_lnd    = data(nf, c_lnd_recv, ip) + data(nf, c_lnd_send, ip)
-   !     net_heat_rof    = data(nf, c_rof_recv, ip) + data(nf, c_rof_send, ip)
-   !     net_heat_ocn    = data(nf, c_ocn_recv, ip) + data(nf, c_ocn_send, ip)
-   !     net_heat_ice_nh = data(nf, c_inh_recv, ip) + data(nf, c_inh_send, ip)
-   !     net_heat_ice_sh = data(nf, c_ish_recv, ip) + data(nf, c_ish_send, ip)
-   !     net_heat_glc    = data(nf, c_glc_recv, ip) + data(nf, c_glc_send, ip)
-   !     net_heat_tot    = net_heat_atm + net_heat_lnd + net_heat_rof + net_heat_ocn + &
-   !                       net_heat_ice_nh + net_heat_ice_sh + net_heat_glc
+    write(diagunit,*) ' '
+    write(diagunit,FAH) subname,'NET HEAT BUDGET (W/m2): period = ',&
+         trim(budget_diags%periods(ip)%name), ': date = ',date,tod
+    write(diagunit,FA0r) '     atm','     lnd','     rof','     ocn','  ice nh','  ice sh','     glc',' *SUM*  '
+    do nf = f_heat_beg, f_heat_end
+       net_heat_atm    = data(nf, c_atm_recv, ip) + data(nf, c_atm_send, ip)
+       net_heat_lnd    = data(nf, c_lnd_recv, ip) + data(nf, c_lnd_send, ip)
+       net_heat_rof    = data(nf, c_rof_recv, ip) + data(nf, c_rof_send, ip)
+       net_heat_ocn    = data(nf, c_ocn_recv, ip) + data(nf, c_ocn_send, ip)
+       net_heat_ice_nh = data(nf, c_inh_recv, ip) + data(nf, c_inh_send, ip)
+       net_heat_ice_sh = data(nf, c_ish_recv, ip) + data(nf, c_ish_send, ip)
+       net_heat_glc    = data(nf, c_glc_recv, ip) + data(nf, c_glc_send, ip)
+       net_heat_tot    = net_heat_atm + net_heat_lnd + net_heat_rof + net_heat_ocn + &
+                         net_heat_ice_nh + net_heat_ice_sh + net_heat_glc
 
-   !     write(diagunit,FA1r) budget_diags%fields(nf)%name,&
-   !          net_heat_atm, net_heat_lnd, net_heat_rof, net_heat_ocn, &
-   !          net_heat_ice_nh, net_heat_ice_sh, net_heat_glc, net_heat_tot
-   !  end do
+       write(diagunit,FA1r) budget_diags%fields(nf)%name,&
+            net_heat_atm, net_heat_lnd, net_heat_rof, net_heat_ocn, &
+            net_heat_ice_nh, net_heat_ice_sh, net_heat_glc, net_heat_tot
+    end do
 
-   !  ! Write out sum over all net heat budgets (sum over f_heat_beg -> f_heat_end)
-   !  sum_net_heat_atm    = sum(data(f_heat_beg:f_heat_end, c_atm_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_atm_send, ip))
-   !  sum_net_heat_lnd    = sum(data(f_heat_beg:f_heat_end, c_lnd_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_lnd_send, ip))
-   !  sum_net_heat_rof    = sum(data(f_heat_beg:f_heat_end, c_rof_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_rof_send, ip))
-   !  sum_net_heat_ocn    = sum(data(f_heat_beg:f_heat_end, c_ocn_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_ocn_send, ip))
-   !  sum_net_heat_ice_nh = sum(data(f_heat_beg:f_heat_end, c_inh_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_inh_send, ip))
-   !  sum_net_heat_ice_sh = sum(data(f_heat_beg:f_heat_end, c_ish_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_ish_send, ip))
-   !  sum_net_heat_glc    = sum(data(f_heat_beg:f_heat_end, c_glc_recv, ip)) + &
-   !                        sum(data(f_heat_beg:f_heat_end, c_glc_send, ip))
-   !  sum_net_heat_tot    = sum_net_heat_atm + sum_net_heat_lnd + sum_net_heat_rof + sum_net_heat_ocn + &
-   !                        sum_net_heat_ice_nh + sum_net_heat_ice_sh + sum_net_heat_glc
+    ! Write out sum over all net heat budgets (sum over f_heat_beg -> f_heat_end)
+    sum_net_heat_atm    = sum(data(f_heat_beg:f_heat_end, c_atm_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_atm_send, ip))
+    sum_net_heat_lnd    = sum(data(f_heat_beg:f_heat_end, c_lnd_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_lnd_send, ip))
+    sum_net_heat_rof    = sum(data(f_heat_beg:f_heat_end, c_rof_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_rof_send, ip))
+    sum_net_heat_ocn    = sum(data(f_heat_beg:f_heat_end, c_ocn_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_ocn_send, ip))
+    sum_net_heat_ice_nh = sum(data(f_heat_beg:f_heat_end, c_inh_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_inh_send, ip))
+    sum_net_heat_ice_sh = sum(data(f_heat_beg:f_heat_end, c_ish_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_ish_send, ip))
+    sum_net_heat_glc    = sum(data(f_heat_beg:f_heat_end, c_glc_recv, ip)) + &
+                          sum(data(f_heat_beg:f_heat_end, c_glc_send, ip))
+    sum_net_heat_tot    = sum_net_heat_atm + sum_net_heat_lnd + sum_net_heat_rof + sum_net_heat_ocn + &
+                          sum_net_heat_ice_nh + sum_net_heat_ice_sh + sum_net_heat_glc
 
-   !  write(diagunit,FA1r)'   *SUM*',&
-   !       sum_net_heat_atm, sum_net_heat_lnd, sum_net_heat_rof, sum_net_heat_ocn, &
-   !       sum_net_heat_ice_nh, sum_net_heat_ice_sh, sum_net_heat_glc, sum_net_heat_tot
+    write(diagunit,FA1r)'   *SUM*',&
+         sum_net_heat_atm, sum_net_heat_lnd, sum_net_heat_rof, sum_net_heat_ocn, &
+         sum_net_heat_ice_nh, sum_net_heat_ice_sh, sum_net_heat_glc, sum_net_heat_tot
 
     ! -----------------------------
     ! write out net water budgets
@@ -2061,7 +2058,7 @@ contains
     write(diagunit,*) ' '
     write(diagunit,FAH) subname,'NET WATER BUDGET (kg/m2s*1e6): period = ',&
          trim(budget_diags%periods(ip)%name), ': date = ',date,tod
-    write(diagunit,FA0r1) '     atm','     lnd','     rof','     ocn','  ice nh','  ice sh','     glc',' *SUM*  ', '*SUM(ocn+ice)*'
+    write(diagunit,FA0r) '     atm','     lnd','     rof','     ocn','  ice nh','  ice sh','     glc',' *SUM*  '
     do nf = f_watr_beg, f_watr_end
        net_water_atm    = data(nf, c_atm_recv, ip) + data(nf, c_atm_send, ip)
        net_water_lnd    = data(nf, c_lnd_recv, ip) + data(nf, c_lnd_send, ip)
@@ -2072,11 +2069,10 @@ contains
        net_water_glc    = data(nf, c_glc_recv, ip) + data(nf, c_glc_send, ip)
        net_water_tot    = net_water_atm + net_water_lnd + net_water_rof + net_water_ocn + &
                           net_water_ice_nh + net_water_ice_sh + net_water_glc
-       net_water_ocnice = net_water_ocn + net_water_ice_nh + net_water_ice_sh
 
-       write(diagunit,FA1r1) budget_diags%fields(nf)%name,&
+       write(diagunit,FA1r) budget_diags%fields(nf)%name,&
             net_water_atm, net_water_lnd, net_water_rof, net_water_ocn, &
-            net_water_ice_nh, net_water_ice_sh, net_water_glc, net_water_tot, net_water_ocnice
+            net_water_ice_nh, net_water_ice_sh, net_water_glc, net_water_tot
     enddo
 
     ! Write out sum over all net water budgets (sum over f_watr_beg -> f_watr_end)
@@ -2096,60 +2092,58 @@ contains
                            sum(data(f_watr_beg:f_watr_end, c_glc_send, ip))
     sum_net_water_tot    = sum_net_water_atm + sum_net_water_lnd + sum_net_water_rof + sum_net_water_ocn + &
                            sum_net_water_ice_nh + sum_net_water_ice_sh + sum_net_water_glc
-    sum_net_water_ocnice = sum_net_water_ocn + sum_net_water_ice_nh + sum_net_water_ice_sh
 
-
-    write(diagunit,FA1r1)'   *SUM*',&
+    write(diagunit,FA1r)'   *SUM*',&
          sum_net_water_atm, sum_net_water_lnd, sum_net_water_rof, sum_net_water_ocn, &
-         sum_net_water_ice_nh, sum_net_water_ice_sh, sum_net_water_glc, sum_net_water_tot, sum_net_water_ocnice
+         sum_net_water_ice_nh, sum_net_water_ice_sh, sum_net_water_glc, sum_net_water_tot
 
     ! -----------------------------
     ! write out net salt budgets
     ! -----------------------------
 
-   !  if (trim(budget_table_version) == 'v1') then
-   !     write(diagunit,*) ' '
-   !     write(diagunit,FAH) subname,'NET SALT BUDGET (kg/m2s): period = ',&
-   !          trim(budget_diags%periods(ip)%name), ': date = ',date,tod
-   !     write(diagunit,FA0s) '     atm','     lnd','     rof','     ocn','  ice nh','  ice sh','     glc',' *SUM*  '
-   !     do nf = f_salt_beg, f_salt_end
-   !        net_salt_atm    = data(nf, c_atm_recv, ip) + data(nf, c_atm_send, ip)
-   !        net_salt_lnd    = data(nf, c_lnd_recv, ip) + data(nf, c_lnd_send, ip)
-   !        net_salt_rof    = data(nf, c_rof_recv, ip) + data(nf, c_rof_send, ip)
-   !        net_salt_ocn    = data(nf, c_ocn_recv, ip) + data(nf, c_ocn_send, ip)
-   !        net_salt_ice_nh = data(nf, c_inh_recv, ip) + data(nf, c_inh_send, ip)
-   !        net_salt_ice_sh = data(nf, c_ish_recv, ip) + data(nf, c_ish_send, ip)
-   !        net_salt_glc    = data(nf, c_glc_recv, ip) + data(nf, c_glc_send, ip)
-   !        net_salt_tot    = net_salt_atm + net_salt_lnd + net_salt_rof + net_salt_ocn + &
-   !             net_salt_ice_nh + net_salt_ice_sh + net_salt_glc
+    if (trim(budget_table_version) == 'v1') then
+       write(diagunit,*) ' '
+       write(diagunit,FAH) subname,'NET SALT BUDGET (kg/m2s): period = ',&
+            trim(budget_diags%periods(ip)%name), ': date = ',date,tod
+       write(diagunit,FA0s) '     atm','     lnd','     rof','     ocn','  ice nh','  ice sh','     glc',' *SUM*  '
+       do nf = f_salt_beg, f_salt_end
+          net_salt_atm    = data(nf, c_atm_recv, ip) + data(nf, c_atm_send, ip)
+          net_salt_lnd    = data(nf, c_lnd_recv, ip) + data(nf, c_lnd_send, ip)
+          net_salt_rof    = data(nf, c_rof_recv, ip) + data(nf, c_rof_send, ip)
+          net_salt_ocn    = data(nf, c_ocn_recv, ip) + data(nf, c_ocn_send, ip)
+          net_salt_ice_nh = data(nf, c_inh_recv, ip) + data(nf, c_inh_send, ip)
+          net_salt_ice_sh = data(nf, c_ish_recv, ip) + data(nf, c_ish_send, ip)
+          net_salt_glc    = data(nf, c_glc_recv, ip) + data(nf, c_glc_send, ip)
+          net_salt_tot    = net_salt_atm + net_salt_lnd + net_salt_rof + net_salt_ocn + &
+               net_salt_ice_nh + net_salt_ice_sh + net_salt_glc
 
-   !        write(diagunit,FA1s) budget_diags%fields(nf)%name,&
-   !             net_salt_atm, net_salt_lnd, net_salt_rof, net_salt_ocn, &
-   !             net_salt_ice_nh, net_salt_ice_sh, net_salt_glc, net_salt_tot
-   !     enddo
+          write(diagunit,FA1s) budget_diags%fields(nf)%name,&
+               net_salt_atm, net_salt_lnd, net_salt_rof, net_salt_ocn, &
+               net_salt_ice_nh, net_salt_ice_sh, net_salt_glc, net_salt_tot
+       enddo
 
-   !     ! Write out sum over all net heat budgets (sum over f_salt_beg -> f_salt_end)
-   !     sum_net_salt_atm    = sum(data(f_salt_beg:f_salt_end, c_atm_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_atm_send, ip))
-   !     sum_net_salt_lnd    = sum(data(f_salt_beg:f_salt_end, c_lnd_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_lnd_send, ip))
-   !     sum_net_salt_rof    = sum(data(f_salt_beg:f_salt_end, c_rof_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_rof_send, ip))
-   !     sum_net_salt_ocn    = sum(data(f_salt_beg:f_salt_end, c_ocn_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_ocn_send, ip))
-   !     sum_net_salt_ice_nh = sum(data(f_salt_beg:f_salt_end, c_inh_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_inh_send, ip))
-   !     sum_net_salt_ice_sh = sum(data(f_salt_beg:f_salt_end, c_ish_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_ish_send, ip))
-   !     sum_net_salt_glc    = sum(data(f_salt_beg:f_salt_end, c_glc_recv, ip)) + &
-   !          sum(data(f_salt_beg:f_salt_end, c_glc_send, ip))
-   !     sum_net_salt_tot    = sum_net_salt_atm + sum_net_salt_lnd + sum_net_salt_rof + sum_net_salt_ocn + &
-   !          sum_net_salt_ice_nh + sum_net_salt_ice_sh + sum_net_salt_glc
+       ! Write out sum over all net heat budgets (sum over f_salt_beg -> f_salt_end)
+       sum_net_salt_atm    = sum(data(f_salt_beg:f_salt_end, c_atm_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_atm_send, ip))
+       sum_net_salt_lnd    = sum(data(f_salt_beg:f_salt_end, c_lnd_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_lnd_send, ip))
+       sum_net_salt_rof    = sum(data(f_salt_beg:f_salt_end, c_rof_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_rof_send, ip))
+       sum_net_salt_ocn    = sum(data(f_salt_beg:f_salt_end, c_ocn_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_ocn_send, ip))
+       sum_net_salt_ice_nh = sum(data(f_salt_beg:f_salt_end, c_inh_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_inh_send, ip))
+       sum_net_salt_ice_sh = sum(data(f_salt_beg:f_salt_end, c_ish_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_ish_send, ip))
+       sum_net_salt_glc    = sum(data(f_salt_beg:f_salt_end, c_glc_recv, ip)) + &
+            sum(data(f_salt_beg:f_salt_end, c_glc_send, ip))
+       sum_net_salt_tot    = sum_net_salt_atm + sum_net_salt_lnd + sum_net_salt_rof + sum_net_salt_ocn + &
+            sum_net_salt_ice_nh + sum_net_salt_ice_sh + sum_net_salt_glc
 
-   !     write(diagunit,FA1s)'   *SUM*',&
-   !          sum_net_salt_atm, sum_net_salt_lnd, sum_net_salt_rof, sum_net_salt_ocn, &
-   !          sum_net_salt_ice_nh, sum_net_salt_ice_sh, sum_net_salt_glc, sum_net_salt_tot
-   !  end if
+       write(diagunit,FA1s)'   *SUM*',&
+            sum_net_salt_atm, sum_net_salt_lnd, sum_net_salt_rof, sum_net_salt_ocn, &
+            sum_net_salt_ice_nh, sum_net_salt_ice_sh, sum_net_salt_glc, sum_net_salt_tot
+    end if
 
     call t_stopf('MED:'//subname)
   end subroutine med_diag_print_summary

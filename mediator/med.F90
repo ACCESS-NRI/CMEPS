@@ -118,6 +118,7 @@ contains
     use med_phases_post_wav_mod , only: med_phases_post_wav
     use med_phases_ocnalb_mod   , only: med_phases_ocnalb_run
     use med_phases_aofluxes_mod , only: med_phases_aofluxes_run
+    use med_phases_scalefluxes_mod, only: med_phases_scalefreshwater_run
     use med_diag_mod            , only: med_phases_diag_accum, med_phases_diag_print
     use med_diag_mod            , only: med_phases_diag_atm
     use med_diag_mod            , only: med_phases_diag_lnd
@@ -411,6 +412,17 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call NUOPC_CompSpecialize(gcomp, specLabel=mediator_label_Advance, &
          specPhaseLabel="med_phases_aofluxes_run", specRoutine=med_phases_aofluxes_run, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    !------------------
+    ! phase routine for freshwater balance
+    !------------------
+
+    call NUOPC_CompSetEntryPoint(gcomp, ESMF_METHOD_RUN, &
+         phaseLabelList=(/"med_phases_scalefreshwater_run"/), userRoutine=mediator_routine_Run, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call NUOPC_CompSpecialize(gcomp, specLabel=mediator_label_Advance, &
+         specPhaseLabel="med_phases_scalefreshwater_run", specRoutine=med_phases_scalefreshwater_run, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     !------------------
