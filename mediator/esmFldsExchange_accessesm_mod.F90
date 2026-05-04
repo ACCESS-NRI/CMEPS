@@ -502,7 +502,7 @@ module esmFldsExchange_accessesm_mod
       allocate(S_flds(7))
       S_flds = (/'So_dhdx', & ! sea_surface_slope_zonal
                  'So_dhdy', & ! sea_surface_slope_merid
-                 'So_t ', & ! inst_temp_height2m
+                 'So_t ', & ! sea_surface_temperature
                  'So_s ', & ! sea surface salinity
                  'So_u', & ! ocean surface zonal current
                  'So_v', & ! ocean surface meridional current
