@@ -500,8 +500,8 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(S_flds(7))
-      S_flds = (/'So_dhdx', & ! inst_zonal_wind_height10m
-                 'So_dhdy', & ! inst_merid_wind_height10m
+      S_flds = (/'So_dhdx', & ! sea_surface_slope_zonal
+                 'So_dhdy', & ! sea_surface_slope_merid
                  'So_t ', & ! inst_temp_height2m
                  'So_s ', & ! inst_spec_humid_height2m
                  'So_u', & ! ocean surface zonal current
