@@ -1814,7 +1814,6 @@ contains
     ! to ocn: merged sensible heat flux
     ! ---------------------------------------------------------------------
     if (phase == 'advertise') then
-       call addfld_from(compatm , 'Faxa_sen')
        call addfld_aoflux('Faox_sen')
        call addfld_from(compice , 'Fioi_melth')
        call addfld_to(compocn , 'Foxx_sen')
@@ -1830,7 +1829,6 @@ contains
     ! to ocn: surface latent heat flux and evaporation water flux
     ! ---------------------------------------------------------------------
     if (phase == 'advertise') then
-       call addfld_from(compatm, 'Faxa_lat' )
        call addfld_aoflux( 'Faox_lat' )
        call addfld_aoflux( 'Faox_evap')
        call addfld_to(compocn, 'Foxx_lat' )
@@ -2255,7 +2253,7 @@ contains
           call addmrg_to(compocn, 'Sw_lamult', mrg_from=compwav, mrg_fld='Sw_lamult', mrg_type='copy')
        end if
     end if
-    if (ocn_name == 'mpaso') then
+    if (ocn_name == 'mpaso' .or. ocn_name == 'mom') then
       !-----------------------------
       ! to ocn:
       !-----------------------------
@@ -2282,6 +2280,45 @@ contains
             call addmrg_to(compocn, 'Sw_Fp', mrg_from=compwav, mrg_fld='Sw_Fp', mrg_type='copy')
          end if
       end if
+      !-----------------------------
+      ! to ocn:
+      !-----------------------------
+      if (phase == 'advertise') then
+         call addfld_from(compwav, 'Sw_t0m1')
+         call addfld_to(compocn, 'Sw_t0m1')
+      else
+         if ( fldchk(is_local%wrap%FBExp(compocn)         , 'Sw_t0m1', rc=rc) .and. &
+              fldchk(is_local%wrap%FBImp(compwav, compwav), 'Sw_t0m1', rc=rc)) then
+            call addmap_from(compwav, 'Sw_t0m1', compocn,  mapbilnr_nstod, 'one', wav2ocn_map)
+            call addmrg_to(compocn, 'Sw_t0m1', mrg_from=compwav, mrg_fld='Sw_t0m1', mrg_type='copy')
+         end if
+      end if    
+      !-----------------------------
+      ! to ocn:
+      !-----------------------------
+      if (phase == 'advertise') then
+         call addfld_from(compwav, 'Sw_t01')
+         call addfld_to(compocn, 'Sw_t01')
+      else
+         if ( fldchk(is_local%wrap%FBExp(compocn)         , 'Sw_t01', rc=rc) .and. &
+              fldchk(is_local%wrap%FBImp(compwav, compwav), 'Sw_t01', rc=rc)) then
+            call addmap_from(compwav, 'Sw_t01', compocn,  mapbilnr_nstod, 'one', wav2ocn_map)
+            call addmrg_to(compocn, 'Sw_t01', mrg_from=compwav, mrg_fld='Sw_t01', mrg_type='copy')
+         end if
+      end if      
+      !-----------------------------
+      ! to ocn:
+      !-----------------------------
+      if (phase == 'advertise') then
+         call addfld_from(compwav, 'Sw_thm')
+         call addfld_to(compocn, 'Sw_thm')
+      else
+         if ( fldchk(is_local%wrap%FBExp(compocn)         , 'Sw_thm', rc=rc) .and. &
+              fldchk(is_local%wrap%FBImp(compwav, compwav), 'Sw_thm', rc=rc)) then
+            call addmap_from(compwav, 'Sw_thm', compocn,  mapbilnr_nstod, 'one', wav2ocn_map)
+            call addmrg_to(compocn, 'Sw_thm', mrg_from=compwav, mrg_fld='Sw_thm', mrg_type='copy')
+         end if
+      end if      
       !-----------------------------
       ! to ocn:
       !-----------------------------
