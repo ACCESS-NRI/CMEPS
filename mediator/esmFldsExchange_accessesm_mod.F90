@@ -18,8 +18,9 @@ module esmFldsExchange_accessesm_mod
     ! mapping and merging
 
     ! In general, first order conservative remapping is used for flux fields
-    ! and bilinear remapping is used for flux fields. Wind stress is a special case
-    ! where a higher order patch mapping is used.
+    ! while bilinear remapping is applied to state fields.
+    ! Velocity and stress fields are remapped using a higher order patch method.
+    ! Some sea-ice related fields are conservatively remapped with weighting by ice fraction.
     !---------------------------------------------------------------------
 
     implicit none
