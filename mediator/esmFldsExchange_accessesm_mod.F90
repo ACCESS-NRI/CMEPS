@@ -130,7 +130,7 @@ module esmFldsExchange_accessesm_mod
       ! to atm: from ocn
       ! ---------------------------------------------------------------------
       allocate(S_flds(3))
-      S_flds = (/'So_t', 'So_u', 'So_v'/)
+      S_flds = [character(len=CS) :: 'So_t', 'So_u', 'So_v']
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld_from(compocn, trim(fldname))
@@ -142,7 +142,7 @@ module esmFldsExchange_accessesm_mod
       ! to atm: from ice
       ! ---------------------------------------------------------------------
       allocate(S_flds(9))
-      S_flds = (/'Si_t', &
+      S_flds = [character(len=CS) :: 'Si_t', &
                'Si_ifrac_n', &
                'Si_vsno_n', &
                'Si_vice_n', &
@@ -151,7 +151,7 @@ module esmFldsExchange_accessesm_mod
                'Si_pndf_n', &
                'Si_pndt_n', &
                'Si_Tf' &
-               /)
+               ]
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         call addfld_from(compice, trim(fldname))
@@ -167,8 +167,8 @@ module esmFldsExchange_accessesm_mod
       ! to ocn: state fields from atm
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
-      S_flds = (/'Sa_pslv', &
-               'So_duu10n' /)
+      S_flds = [character(len=CS) :: 'Sa_pslv', &
+               'So_duu10n' ]
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compatm, trim(fldname))
@@ -181,17 +181,17 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(11, 2))
-      F_flds(1,:) = (/'Faxa_taux ', 'Foxx_taux'/)
-      F_flds(2,:) = (/'Faxa_tauy ', 'Foxx_tauy'/)
-      F_flds(3,:) = (/'Faoa_sen', 'Foxx_sen'/)
-      F_flds(4,:) = (/'Faoa_evap', 'Foxx_evap'/)
-      F_flds(5,:) = (/'Faoa_lwnet', 'Foxx_lwnet'/)
-      F_flds(6,:) = (/'Faoa_swnet_vdr', 'Foxx_swnet_vdr'/)
-      F_flds(7,:) = (/'Faoa_swnet_vdf', 'Foxx_swnet_vdf'/)
-      F_flds(8,:) = (/'Faoa_swnet_idr', 'Foxx_swnet_idr'/)
-      F_flds(9,:) = (/'Faoa_swnet_idf', 'Foxx_swnet_idf'/)
-      F_flds(10,:) = (/'Faoa_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
-      F_flds(11,:) = (/'Faoa_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
+      F_flds(1,:) = [character(len=CS) :: 'Faxa_taux ', 'Foxx_taux']
+      F_flds(2,:) = [character(len=CS) :: 'Faxa_tauy ', 'Foxx_tauy']
+      F_flds(3,:) = [character(len=CS) :: 'Faoa_sen', 'Foxx_sen']
+      F_flds(4,:) = [character(len=CS) :: 'Faoa_evap', 'Foxx_evap']
+      F_flds(5,:) = [character(len=CS) :: 'Faoa_lwnet', 'Foxx_lwnet']
+      F_flds(6,:) = [character(len=CS) :: 'Faoa_swnet_vdr', 'Foxx_swnet_vdr']
+      F_flds(7,:) = [character(len=CS) :: 'Faoa_swnet_vdf', 'Foxx_swnet_vdf']
+      F_flds(8,:) = [character(len=CS) :: 'Faoa_swnet_idr', 'Foxx_swnet_idr']
+      F_flds(9,:) = [character(len=CS) :: 'Faoa_swnet_idf', 'Foxx_swnet_idf']
+      F_flds(10,:) = [character(len=CS) :: 'Faoa_rofl', 'Foxx_rofl']  ! mean runoff rate (liquid)
+      F_flds(11,:) = [character(len=CS) :: 'Faoa_rofi', 'Foxx_rofi']  ! mean runnof rate (frozen)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
@@ -207,12 +207,12 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(6, 2))
-      F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/) ! salt flux sea-ice to ocean
-      F_flds(2,:) = (/'Si_ifrac', 'Si_ifrac'/) ! ice_fraction
-      F_flds(3,:) = (/'Fioi_meltw', 'Fioi_meltw'/) ! freshwater flux sea-ice to ocean
-      F_flds(4,:) = (/'Fioi_melth', 'Fioi_melth'/) ! heat flux sea-ice to ocean
-      F_flds(5,:) = (/'Fioi_taux', 'Foxx_taux'/)
-      F_flds(6,:) = (/'Fioi_tauy', 'Foxx_tauy'/) ! surface stress sea-ice to ocean
+      F_flds(1,:) = [character(len=CS) :: 'Fioi_salt', 'Fioi_salt'] ! salt flux sea-ice to ocean
+      F_flds(2,:) = [character(len=CS) :: 'Si_ifrac', 'Si_ifrac'] ! ice_fraction
+      F_flds(3,:) = [character(len=CS) :: 'Fioi_meltw', 'Fioi_meltw'] ! freshwater flux sea-ice to ocean
+      F_flds(4,:) = [character(len=CS) :: 'Fioi_melth', 'Fioi_melth'] ! heat flux sea-ice to ocean
+      F_flds(5,:) = [character(len=CS) :: 'Fioi_taux', 'Foxx_taux']
+      F_flds(6,:) = [character(len=CS) :: 'Fioi_tauy', 'Foxx_tauy'] ! surface stress sea-ice to ocean
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
@@ -230,13 +230,13 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(S_flds(7))
-      S_flds = (/'So_dhdx', &
+      S_flds = [character(len=CS) :: 'So_dhdx', &
                  'So_dhdy', &
                  'So_t', &
                  'So_s', &
                  'So_u', &
                  'So_v', &
-                 'Fioo_q' /)
+                 'Fioo_q' ]
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          call addfld_from(compocn, trim(fldname))
@@ -249,11 +249,11 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(5, 2))
-      F_flds(1,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
-      F_flds(2,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
-      F_flds(3,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
-      F_flds(4,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
-      F_flds(5,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
+      F_flds(1,:) = [character(len=CS) :: 'Faxa_swpen_n', 'Faxa_swpen_n']
+      F_flds(2,:) = [character(len=CS) :: 'Faxa_melthtop_n', 'Faxa_melthtop_n']
+      F_flds(3,:) = [character(len=CS) :: 'Faxa_condtop_n', 'Faxa_condtop_n']
+      F_flds(4,:) = [character(len=CS) :: 'Sa_tskn_n', 'Sa_tskn_n']
+      F_flds(5,:) = [character(len=CS) :: 'Faxa_sublim_n', 'Faxa_sublim_n']
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
@@ -341,7 +341,7 @@ module esmFldsExchange_accessesm_mod
      end if
 
       allocate(S_flds(2))
-      S_flds = (/'So_u', 'So_v'/)
+      S_flds = [character(len=CS) :: 'So_u', 'So_v']
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
@@ -354,7 +354,7 @@ module esmFldsExchange_accessesm_mod
       deallocate(S_flds)
 
       allocate(S_flds(9))
-      S_flds = (/'Si_t', &
+      S_flds = [character(len=CS) :: 'Si_t', &
                'Si_ifrac_n', &
                'Si_vsno_n', &
                'Si_vice_n', &
@@ -363,7 +363,7 @@ module esmFldsExchange_accessesm_mod
                'Si_pndf_n', &
                'Si_pndt_n', &
                'Si_Tf' &
-               /)
+               ]
       do n = 1,size(S_flds)
         fldname = trim(S_flds(n))
         if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
@@ -383,8 +383,8 @@ module esmFldsExchange_accessesm_mod
       ! to ocn: state fields
       ! ---------------------------------------------------------------------
       allocate(S_flds(2))
-      S_flds = (/'Sa_pslv', &
-               'So_duu10n' /)
+      S_flds = [character(len=CS) :: 'Sa_pslv', &
+               'So_duu10n' ]
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compocn), trim(fldname), rc=rc) .and. &
@@ -403,15 +403,15 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(9, 2))
-      F_flds(1,:) = (/'Faoa_sen', 'Foxx_sen'/)
-      F_flds(2,:) = (/'Faoa_evap', 'Foxx_evap'/)
-      F_flds(3,:) = (/'Faoa_lwnet', 'Foxx_lwnet'/)
-      F_flds(4,:) = (/'Faoa_swnet_vdr', 'Foxx_swnet_vdr'/)
-      F_flds(5,:) = (/'Faoa_swnet_vdf', 'Foxx_swnet_vdf'/)
-      F_flds(6,:) = (/'Faoa_swnet_idr', 'Foxx_swnet_idr'/)
-      F_flds(7,:) = (/'Faoa_swnet_idf', 'Foxx_swnet_idf'/)
-      F_flds(8,:) = (/'Faoa_rofl', 'Foxx_rofl'/)  ! mean runoff rate (liquid)
-      F_flds(9,:) = (/'Faoa_rofi', 'Foxx_rofi'/)  ! mean runnof rate (frozen)
+      F_flds(1,:) = [character(len=CS) :: 'Faoa_sen', 'Foxx_sen']
+      F_flds(2,:) = [character(len=CS) :: 'Faoa_evap', 'Foxx_evap']
+      F_flds(3,:) = [character(len=CS) :: 'Faoa_lwnet', 'Foxx_lwnet']
+      F_flds(4,:) = [character(len=CS) :: 'Faoa_swnet_vdr', 'Foxx_swnet_vdr']
+      F_flds(5,:) = [character(len=CS) :: 'Faoa_swnet_vdf', 'Foxx_swnet_vdf']
+      F_flds(6,:) = [character(len=CS) :: 'Faoa_swnet_idr', 'Foxx_swnet_idr']
+      F_flds(7,:) = [character(len=CS) :: 'Faoa_swnet_idf', 'Foxx_swnet_idf']
+      F_flds(8,:) = [character(len=CS) :: 'Faoa_rofl', 'Foxx_rofl']  ! mean runoff rate (liquid)
+      F_flds(9,:) = [character(len=CS) :: 'Faoa_rofi', 'Foxx_rofi']  ! mean runnof rate (frozen)
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
@@ -451,10 +451,10 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(4, 2))
-      F_flds(1,:) = (/'Fioi_salt', 'Fioi_salt'/)
-      F_flds(2,:) = (/'Fioi_meltw', 'Fioi_meltw'/)
-      F_flds(3,:) = (/'Fioi_melth', 'Fioi_melth'/)
-      F_flds(4,:) = (/'Si_ifrac', 'Si_ifrac'/)
+      F_flds(1,:) = [character(len=CS) :: 'Fioi_salt', 'Fioi_salt']
+      F_flds(2,:) = [character(len=CS) :: 'Fioi_meltw', 'Fioi_meltw']
+      F_flds(3,:) = [character(len=CS) :: 'Fioi_melth', 'Fioi_melth']
+      F_flds(4,:) = [character(len=CS) :: 'Si_ifrac', 'Si_ifrac']
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
          fldname2 = trim(F_flds(n,2))
@@ -505,13 +505,13 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(S_flds(7))
-      S_flds = (/'So_dhdx', & ! sea_surface_slope_zonal
+      S_flds = [character(len=CS) :: 'So_dhdx', & ! sea_surface_slope_zonal
                  'So_dhdy', & ! sea_surface_slope_merid
                  'So_t ', & ! sea_surface_temperature
                  'So_s ', & ! sea surface salinity
                  'So_u', & ! ocean surface zonal current
                  'So_v', & ! ocean surface meridional current
-                 'Fioo_q' /) ! Freezing/melting potential
+                 'Fioo_q' ] ! Freezing/melting potential
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compice),trim(fldname),rc=rc) .and. &
@@ -530,11 +530,11 @@ module esmFldsExchange_accessesm_mod
       ! ---------------------------------------------------------------------
 
       allocate(F_flds(5, 2))
-      F_flds(1,:) = (/'Faxa_swpen_n', 'Faxa_swpen_n'/)
-      F_flds(2,:) = (/'Faxa_melthtop_n', 'Faxa_melthtop_n'/)
-      F_flds(3,:) = (/'Faxa_condtop_n', 'Faxa_condtop_n'/)
-      F_flds(4,:) = (/'Sa_tskn_n', 'Sa_tskn_n'/)
-      F_flds(5,:) = (/'Faxa_sublim_n', 'Faxa_sublim_n'/)
+      F_flds(1,:) = [character(len=CS) :: 'Faxa_swpen_n', 'Faxa_swpen_n']
+      F_flds(2,:) = [character(len=CS) :: 'Faxa_melthtop_n', 'Faxa_melthtop_n']
+      F_flds(3,:) = [character(len=CS) :: 'Faxa_condtop_n', 'Faxa_condtop_n']
+      F_flds(4,:) = [character(len=CS) :: 'Sa_tskn_n', 'Sa_tskn_n']
+      F_flds(5,:) = [character(len=CS) :: 'Faxa_sublim_n', 'Faxa_sublim_n']
 
       do n = 1,size(F_flds,1)
          fldname1 = trim(F_flds(n,1))
