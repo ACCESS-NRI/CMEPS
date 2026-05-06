@@ -30,8 +30,8 @@ contains
   subroutine med_phases_scalefreshwater_run(gcomp, rc)
 
   !---------------------------------------
-  ! balance global freshwater to zero, by scaling precip, such that the sum of 
-  ! precip, runoff and evap is zero
+  ! balance freshwater fluxes between atmosphere & ocnea (+ sea ice) to zero, 
+  ! by scaling precip, such that the sum of precip, runoff and evap is zero
   ! this adjusts FBImp fields - so needs to be run :
   ! - before components merge freshwater fluxes in med_phases_prep_ocn_accum and med_phases_prep_ice
   ! - after evap is calculated in aoflux_run
@@ -186,8 +186,8 @@ contains
   endif
 
   precip_fact = 1 - (global_sum(ifw)/global_sum(ip))
-  ! MPI reductions are not always deterministic, so round to 15 decimal places
-  precip_fact = anint(precip_fact * 1d15) / 1d15
+  ! MPI reductions are not always deterministic, so round to 13 decimal places
+  precip_fact = anint(precip_fact * 1d13) / 1d13
 
   if (maintask .and. (dbug_flag > dbug_threshold)) then
     write(logunit,'(a,ES26.18)') &
