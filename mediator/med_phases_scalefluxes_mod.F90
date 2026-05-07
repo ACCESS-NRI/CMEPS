@@ -55,7 +55,7 @@ contains
   type(ESMF_VM) :: vm
   integer             :: i, comm
   real(r8), pointer   :: evap(:), evap_si(:), rofl(:), rofi(:)
-  real(r8), allocatable :: precip_sum(:), precip_sum_weighted(:,:) , fw_sum(:)
+  real(r8), allocatable :: precip_sum(:), sum_weighted(:,:)
   real(r8)            :: local_sum(2), global_sum(2) ! Precip sum, Total Freshwater Sum
   real(r8)            :: precip_fact
   real(r8), pointer   :: ocn_areas(:), ice_areas(:)
@@ -76,18 +76,18 @@ contains
   call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-! Get the MPI communicator from the VM
+  ! Get the MPI communicator from the VM
   call ESMF_VMGet(vm, mpiCommunicator=comm, rc=rc)
 
-  ! --- Get the internal state
+  ! Get the internal state
   nullify(is_local%wrap)
   call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
   ocn_areas => is_local%wrap%mesh_info(compocn)%areas
 
-  local_sum = 0
   if ( first_call ) then
+    ! test required fields exist
     if (fldchk(is_local%wrap%FBImp(compatm,compocn), 'Faxa_rainl', rc=rc) .and. &
         fldchk(is_local%wrap%FBImp(compatm,compocn), 'Faxa_rainc', rc=rc) .and. &
         fldchk(is_local%wrap%FBImp(compatm,compocn), 'Faxa_snowl', rc=rc) .and. &
@@ -122,28 +122,15 @@ contains
   call fldbun_getdata1d(is_local%wrap%FBfrac(compocn), 'ofrac', ofrac, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  call FB_GetFldPtr(is_local%wrap%FBMed_aoflux_o, 'Faox_evap' , evap, rc=rc)
-  if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-  call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofl' , rofl, rc=rc)
-  if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
-  call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofi' , rofi, rc=rc)
-  if (ChkErr(rc,__LINE__,u_FILE_u)) return
-
   allocate(precip_sum(size(ofrac)))
-  allocate(precip_sum_weighted(size(ofrac),2))
-  ! allocate(fw_sum(size(ofrac)))
+  allocate(sum_weighted(size(ofrac),2))
+
+  ! First, get the precip fields
+
   call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), precip_sum, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  precip_sum_weighted(:,ip) = ocn_areas*ofrac*precip_sum
-
-  ! do i = 1, size(ofrac)
-    ! rain and snow are not yet scaled by ofrac
-    ! see https://github.com/ESCOMP/CMEPS/blob/1f8d26a23be9809848146b1334ffa55d1b9d7fa1/mediator/esmFldsExchange_cesm_mod.F90#L1801-L1802
-    ! local_sum(ip) = local_sum(ip) + ocn_areas(i)*ofrac(i)*precip_sum(i)
-  ! end do
+  sum_weighted(:,ip) = ocn_areas*ofrac*precip_sum
 
   ! If cice IS PRESENT
   if (is_local%wrap%comp_present(compice)) then
@@ -155,42 +142,34 @@ contains
 
     call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compice), precip_sum, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    ! do i = 1, size(ofrac)
-      ! rain and snow to sea ice are grid cell area fluxes over global domain
-      ! (see https://github.com/ESCOMP/CMEPS/blob/1f8d26a23be9809848146b1334ffa55d1b9d7fa1/mediator/esmFldsExchange_cesm_mod.F90#L2730-L2731)
-      ! therefore this doesn't exactly match precip in CICE, as ifrac changes 
-      ! within the model before rain and snow are accumulated
-      ! local_sum(ip) = local_sum(ip) + ice_areas(i)*ifrac(i)*precip_sum(i)
-        ! precip_sum_weighted(i) = precip_sum_weighted(i) + ice_areas(i)*ifrac(i)*precip_sum(i)
-    ! end do
-    precip_sum_weighted(:,ip) = precip_sum_weighted(:,ip) + ice_areas*ifrac*precip_sum
+
+    sum_weighted(:,ip) = sum_weighted(:,ip) + ice_areas*ifrac*precip_sum
 
   endif
 
-  ! local_sum(ifw) = local_sum(ip)
-  ! do i = 1, size(ofrac)
-      ! local_sum(ifw) = local_sum(ifw) + ocn_areas(i)*(ofrac(i)*evap(i) + rofl(i) + rofi(i))
-  ! end do
-  precip_sum_weighted(:,ifw) = precip_sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
+  ! Second, add the runoff and evaporation to get a total freshwater flux
+
+  call FB_GetFldPtr(is_local%wrap%FBMed_aoflux_o, 'Faox_evap' , evap, rc=rc)
+  if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+  call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofl' , rofl, rc=rc)
+  if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+  call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofi' , rofi, rc=rc)
+  if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+  sum_weighted(:,ifw) = sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
 
   if (is_local%wrap%comp_present(compice)) then
     call FB_GetFldPtr(is_local%wrap%FBImp(compice,compice), 'Faii_evap' , evap_si, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    precip_sum_weighted(:,ifw) = precip_sum_weighted(:,ifw) + ice_areas*ifrac*evap_si
-
-    ! do i = 1, size(ofrac)
-    !   local_sum(ifw) = local_sum(ifw) + ice_areas(i)*ifrac(i)*evap_si(i)
-    ! end do
+    sum_weighted(:,ifw) = sum_weighted(:,ifw) + ice_areas*ifrac*evap_si
   endif
 
-
-  call shr_reprosum_calc(precip_sum_weighted, global_sum, size(ofrac), size(ofrac), 2, &
+  ! Sum runoff and total freshwater flux globally
+  call shr_reprosum_calc(sum_weighted, global_sum, size(ofrac), size(ofrac), 2, &
                                commid=comm)
-
-  ! call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
-  !   reduceflag=ESMF_REDUCE_SUM, rc=rc)
-  ! if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
   if (maintask .and. (dbug_flag > dbug_threshold)) then
 
@@ -203,9 +182,9 @@ contains
       global_sum(ifw)/(4.0_r8*shr_const_pi)
   endif
 
+  ! Scale total freshwater to zero
+
   precip_fact = 1 - (global_sum(ifw)/global_sum(ip))
-  ! MPI reductions are not always deterministic, so round to 13 decimal places
-  ! precip_fact = anint(precip_fact * 1d13) / 1d13
 
   if (maintask .and. (dbug_flag > dbug_threshold)) then
     write(logunit,'(a,ES26.18)') &
@@ -220,6 +199,7 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
   endif
 
+  ! Check total freshwater flux globally is zero
   if (dbug_flag > dbug_threshold) then
     !check new global_fw_sum
     local_sum = 0
