@@ -78,6 +78,7 @@ contains
 
   ! Get the MPI communicator from the VM
   call ESMF_VMGet(vm, mpiCommunicator=comm, rc=rc)
+  if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
   ! Get the internal state
   nullify(is_local%wrap)
