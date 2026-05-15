@@ -30,7 +30,7 @@ contains
   subroutine med_phases_scalefreshwater_run(gcomp, rc)
 
   !---------------------------------------
-  ! balance freshwater fluxes between atmosphere & ocnea (+ sea ice) to zero, 
+  ! balance freshwater fluxes between atmosphere & ocean (+ sea ice) to zero, 
   ! by scaling precip, such that the sum of precip, runoff and evap is zero
   ! this adjusts FBImp fields - so needs to be run :
   ! - before components merge freshwater fluxes in med_phases_prep_ocn_accum and med_phases_prep_ice
