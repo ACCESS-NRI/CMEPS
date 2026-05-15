@@ -55,8 +55,10 @@ contains
   type(ESMF_VM) :: vm
   integer             :: i, comm
   real(r8), pointer   :: evap(:), evap_si(:), rofl(:), rofi(:)
-  real(r8), allocatable :: precip_sum(:), sum_weighted(:,:)
-  real(r8)            :: local_sum(2), global_sum(2) ! Precip sum, Total Freshwater Sum
+  real(r8), allocatable :: ocn_precip_sum(:), ocn_sum_weighted(:,:) ! local ocean sums
+  real(r8), allocatable :: ice_precip_sum(:), ice_sum_weighted(:,:) ! local ice sums
+  real(r8)            :: ocn_global_sum(2), ice_global_sum(2)       ! global ocean, ice sums
+  real(r8)            :: local_sum(1), global_sum(2)            ! global ocean+ice sums
   real(r8)            :: precip_fact
   real(r8), pointer   :: ocn_areas(:), ice_areas(:)
   real(r8), pointer   :: ifrac(:)  ! ice fraction in ocean grid cell
@@ -64,6 +66,7 @@ contains
   logical             :: first_call = .true. , sum_precip = .true.
   integer, parameter  :: ip=1, ifw=2 ! index for precip, freshwater
   integer, parameter  :: dbug_threshold = 20 ! threshold for writing debug information in this subroutine
+  real(r8), parameter :: eps = 10.0_r8 * tiny(0.0_r8) ! threshold for zero
   character(len=*), parameter    :: subname='(med_phases_scalefreshwater_run)'
   !---------------------------------------
 
@@ -123,15 +126,14 @@ contains
   call fldbun_getdata1d(is_local%wrap%FBfrac(compocn), 'ofrac', ofrac, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  allocate(precip_sum(size(ofrac)))
-  allocate(sum_weighted(size(ofrac),2))
+  allocate(ocn_precip_sum(size(ofrac)))
+  allocate(ocn_sum_weighted(size(ofrac),2))
 
   ! First, get the precip fields
-
-  call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), precip_sum, rc=rc)
+  call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), ocn_precip_sum, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  sum_weighted(:,ip) = ocn_areas*ofrac*precip_sum
+  ocn_sum_weighted(:,ip) = ocn_areas*ofrac*ocn_precip_sum   ! convert from a flux (km/m2/s) to a mass rate (kg/s)
 
   ! If cice IS PRESENT
   if (is_local%wrap%comp_present(compice)) then
@@ -141,10 +143,13 @@ contains
     call fldbun_getdata1d(is_local%wrap%FBfrac(compice), 'ifrac', ifrac, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compice), precip_sum, rc=rc)
+    allocate(ice_precip_sum(size(ifrac)))
+    allocate(ice_sum_weighted(size(ifrac),2))
+
+    call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compice), ice_precip_sum, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    sum_weighted(:,ip) = sum_weighted(:,ip) + ice_areas*ifrac*precip_sum
+    ice_sum_weighted(:,ip) = ice_areas*ifrac*ice_precip_sum
 
   endif
 
@@ -159,43 +164,47 @@ contains
   call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofi' , rofi, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  sum_weighted(:,ifw) = sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
+  ocn_sum_weighted(:,ifw) = ocn_sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
 
   if (is_local%wrap%comp_present(compice)) then
     call FB_GetFldPtr(is_local%wrap%FBImp(compice,compice), 'Faii_evap' , evap_si, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    sum_weighted(:,ifw) = sum_weighted(:,ifw) + ice_areas*ifrac*evap_si
+    ice_sum_weighted(:,ifw) = ice_sum_weighted(:,ip) + ice_areas*ifrac*evap_si
   endif
 
   ! Sum runoff and total freshwater flux globally
-  call shr_reprosum_calc(sum_weighted, global_sum, size(ofrac), size(ofrac), 2, &
+  call shr_reprosum_calc(ocn_sum_weighted, ocn_global_sum, size(ofrac), size(ofrac), 2, &
+                               commid=comm)
+  call shr_reprosum_calc(ice_sum_weighted, ice_global_sum, size(ifrac), size(ifrac), 2, &
                                commid=comm)
 
+  global_sum = ocn_global_sum + ice_global_sum
+
   if (maintask .and. (dbug_flag > dbug_threshold)) then
-
     write(logunit,'(a,ES26.18)') &
-      trim(subname)//': global_precip_sum ',&
-      global_sum(ip)/(4.0_r8*shr_const_pi)
-
+      trim(subname)//': global_precip_sum ', global_sum(ip)/(4.0_r8*shr_const_pi)
     write(logunit,'(a,ES26.18)') &
-      trim(subname)//': global_fw_sum ',&
-      global_sum(ifw)/(4.0_r8*shr_const_pi)
+      trim(subname)//': global_fw_sum ', global_sum(ifw)/(4.0_r8*shr_const_pi)
   endif
 
-  ! Scale total freshwater to zero
-
-if (abs(global_sum(ip)) > 0.0_r8) then
+  if (abs(global_sum(ip)) > eps) then
+    ! Scale total freshwater to zero
     precip_fact = 1.0_r8 - (global_sum(ifw)/global_sum(ip))
-else
+  else
     if (maintask) write(logunit,'(a)') trim(subname)//': WARNING: global precip is zero, skipping scaling'
     precip_fact = 1.0_r8
-end if
+  end if
+
+  if (precip_fact < eps) then
+    call shr_log_error(trim(subname)//": ERROR global freshwater flux is greater than global precip flux", &
+      line=__LINE__, file=u_FILE_u, rc=rc)
+    return
+  end if
 
   if (maintask .and. (dbug_flag > dbug_threshold)) then
     write(logunit,'(a,ES26.18)') &
-      trim(subname)//': Scaling rain & snow by non-unity precip_fact ',&
-      precip_fact
+      trim(subname)//': Scaling rain & snow by non-unity precip_fact ', precip_fact
   endif
 
   call scalefreshwater_scale_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), precip_fact, rc=rc)
@@ -209,28 +218,27 @@ end if
   if (dbug_flag > dbug_threshold) then
     !check new global_fw_sum
     local_sum = 0
-    call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), precip_sum, rc=rc)
+    call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), ocn_precip_sum, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     do i = 1, size(ofrac)
-      local_sum(ifw) = local_sum(ifw) + ocn_areas(i)*(ofrac(i)*(precip_sum(i) + evap(i)) + rofl(i) + rofi(i))
+      local_sum(1) = local_sum(1) + ocn_areas(i)*(ofrac(i)*(ocn_precip_sum(i) + evap(i)) + rofl(i) + rofi(i))
     end do
 
     if (is_local%wrap%comp_present(compice)) then
-      call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compice), precip_sum, rc=rc)
+      call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compice), ice_precip_sum, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-      do i = 1, size(ofrac)
-        local_sum(ifw) = local_sum(ifw) + ice_areas(i)*ifrac(i)*(precip_sum(i) + evap_si(i))
+      do i = 1, size(ifrac)
+        local_sum(1) = local_sum(1) + ice_areas(i)*ifrac(i)*(ice_precip_sum(i) + evap_si(i))
       end do
     endif
 
-    call ESMF_VMAllreduce(is_local%wrap%vm, senddata=local_sum, recvdata=global_sum, count=2, &
+    call ESMF_VMAllreduce(is_local%wrap%vm, senddata=local_sum, recvdata=global_sum, count=1, &
       reduceflag=ESMF_REDUCE_SUM, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     if (maintask) then
       write(logunit,'(a,ES26.18)') &
-        trim(subname)//': global_fw_sum ',&
-        global_sum(ifw)/(4.0_r8*shr_const_pi)
+        trim(subname)//': global_fw_sum ', global_sum(1)/(4.0_r8*shr_const_pi)
     endif
   endif
 
