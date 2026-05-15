@@ -185,7 +185,12 @@ contains
 
   ! Scale total freshwater to zero
 
-  precip_fact = 1 - (global_sum(ifw)/global_sum(ip))
+if (abs(global_sum(ip)) > 0.0_r8) then
+    precip_fact = 1.0_r8 - (global_sum(ifw)/global_sum(ip))
+else
+    if (maintask) write(logunit,'(a)') trim(subname)//': WARNING: global precip is zero, skipping scaling'
+    precip_fact = 1.0_r8
+end if
 
   if (maintask .and. (dbug_flag > dbug_threshold)) then
     write(logunit,'(a,ES26.18)') &
