@@ -166,20 +166,23 @@ contains
 
   ocn_sum_weighted(:,ifw) = ocn_sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
 
+  ! Sum runoff and total freshwater flux globally
+  call shr_reprosum_calc(ocn_sum_weighted, ocn_global_sum, size(ofrac), size(ofrac), 2, &
+                               commid=comm)
+
+  global_sum = ocn_global_sum
+
   if (is_local%wrap%comp_present(compice)) then
     call FB_GetFldPtr(is_local%wrap%FBImp(compice,compice), 'Faii_evap' , evap_si, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ice_sum_weighted(:,ifw) = ice_sum_weighted(:,ip) + ice_areas*ifrac*evap_si
+
+    call shr_reprosum_calc(ice_sum_weighted, ice_global_sum, size(ifrac), size(ifrac), 2, &
+                              commid=comm)
+
+    global_sum = global_sum + ice_global_sum
   endif
-
-  ! Sum runoff and total freshwater flux globally
-  call shr_reprosum_calc(ocn_sum_weighted, ocn_global_sum, size(ofrac), size(ofrac), 2, &
-                               commid=comm)
-  call shr_reprosum_calc(ice_sum_weighted, ice_global_sum, size(ifrac), size(ifrac), 2, &
-                               commid=comm)
-
-  global_sum = ocn_global_sum + ice_global_sum
 
   if (maintask .and. (dbug_flag > dbug_threshold)) then
     write(logunit,'(a,ES26.18)') &
