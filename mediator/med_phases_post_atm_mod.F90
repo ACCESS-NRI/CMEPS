@@ -12,6 +12,9 @@ module med_phases_post_atm_mod
 
   character(*), parameter :: u_FILE_u  = &
        __FILE__
+  logical :: first_time = .true.
+  character(len=9), parameter :: fields_to_spread_runoff(1) = &
+       ['Foxx_rofi']
 
 !-----------------------------------------------------------------------------
 contains
@@ -35,6 +38,8 @@ contains
     use med_utils_mod         , only : chkerr    => med_utils_ChkErr
     use med_internalstate_mod , only : compocn, compatm, compice, complnd, compwav, coupling_mode
     use perf_mod              , only : t_startf, t_stopf
+    use shr_log_mod            , only : shr_log_error
+    use med_phases_post_rof_mod, only: med_phases_post_rof_init_rof_spread_rofi, med_phases_post_rof_spread_rofi
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
@@ -44,6 +49,8 @@ contains
     type(InternalState) :: is_local
     type(ESMF_Clock)    :: dClock
     character(len=*), parameter :: subname='(med_phases_post_atm)'
+    character(len=CL) :: atm2ocn_ice_spread
+    logical       :: isPresent, isSet
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -123,6 +130,32 @@ contains
     if (ESMF_ClockIsCreated(dclock)) then
        call med_phases_history_write_comp(gcomp, compatm, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
+
+    call NUOPC_CompAttributeGet(gcomp, name='atm2ocn_ice_spread', value=atm2ocn_ice_spread, isPresent=isPresent, isSet=isSet, rc=rc)
+
+    if (isPresent .and. isSet) then
+
+       if (first_time) then
+         call med_phases_post_rof_init_rof_spread_rofi(gcomp, fields_to_spread_runoff, atm2ocn_ice_spread, compocn, rc)
+         if (ChkErr(rc,__LINE__,u_FILE_u)) return
+         first_time=.false.
+       end if
+
+       do n = 1, size(fields_to_spread_runoff)
+          call ESMF_FieldBundleGet(is_local%wrap%FBImp(compatm,compocn), fieldName=trim(fields_to_spread_runoff(n)), isPresent=exists, rc=rc)
+          if (ChkErr(rc,__LINE__,u_FILE_u)) then
+             call shr_log_error(string=trim(subname)//" Error checking field: "//trim(fields_to_spread_runoff(n)), line=__LINE__,file=u_FILE_u, rc=rc)
+             return
+          end if
+          if (exists) then
+             call med_phases_post_rof_spread_rofi(gcomp, fields_to_spread_runoff(n), is_local%wrap%FBImp(compatm,compocn), compocn, rc)
+             if (ChkErr(rc,__LINE__,u_FILE_u)) return
+          else
+             call shr_log_error(string=trim(subname)//" Runoff field to spread: "//trim(fields_to_spread_runoff(n))//" does not exist", line=__LINE__,file=u_FILE_u, rc=rc)
+             return
+          end if
+       end do
     end if
 
     if (dbug_flag > 20) then
