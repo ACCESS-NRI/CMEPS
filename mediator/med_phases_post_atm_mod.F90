@@ -27,6 +27,7 @@ contains
     !---------------------------------------
 
     use NUOPC_Mediator        , only : NUOPC_MediatorGet
+    use NUOPC                 , only : NUOPC_CompAttributeGet
     use ESMF                  , only : ESMF_Clock, ESMF_ClockIsCreated
     use ESMF                  , only : ESMF_GridComp, ESMF_GridCompGet, ESMF_FieldBundleGet
     use ESMF                  , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
@@ -51,6 +52,7 @@ contains
     character(len=*), parameter :: subname='(med_phases_post_atm)'
     character(len=CL) :: atm2ocn_ice_spread
     logical       :: isPresent, isSet
+    integer :: n
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
@@ -143,12 +145,12 @@ contains
        end if
 
        do n = 1, size(fields_to_spread_runoff)
-          call ESMF_FieldBundleGet(is_local%wrap%FBImp(compatm,compocn), fieldName=trim(fields_to_spread_runoff(n)), isPresent=exists, rc=rc)
+          call ESMF_FieldBundleGet(is_local%wrap%FBImp(compatm,compocn), fieldName=trim(fields_to_spread_runoff(n)), isPresent=isPresent, rc=rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) then
              call shr_log_error(string=trim(subname)//" Error checking field: "//trim(fields_to_spread_runoff(n)), line=__LINE__,file=u_FILE_u, rc=rc)
              return
           end if
-          if (exists) then
+          if (isPresent) then
              call med_phases_post_rof_spread_rofi(gcomp, fields_to_spread_runoff(n), is_local%wrap%FBImp(compatm,compocn), compocn, rc)
              if (ChkErr(rc,__LINE__,u_FILE_u)) return
           else
