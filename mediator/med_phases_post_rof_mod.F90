@@ -32,7 +32,7 @@ module med_phases_post_rof_mod
   implicit none
   private
 
-  public  :: med_phases_post_rof_init
+  public  :: med_phases_post_rof_init, med_phases_post_rof_init_rof_spread_rofi, med_phases_post_rof_spread_rofi
   public  :: med_phases_post_rof
   private :: med_phases_post_rof_create_rof_field_bundle
   private :: med_phases_post_rof_remove_negative_runoff
@@ -49,6 +49,7 @@ module med_phases_post_rof_mod
   logical :: remove_negative_runoff_lnd
   logical :: remove_negative_runoff_glc
   logical :: spread_rofi_nh, spread_rofi_sh
+  logical :: first_time = .true.
   character(len=CL) :: rof2ocn_ice_spread
 
   character(len=9), parameter :: fields_to_remove_negative_runoff_lnd(2) = &
@@ -144,7 +145,6 @@ contains
     real(r8), pointer   :: data_copy(:)
     integer             :: n
     logical             :: exists
-    logical             :: first_time = .true.
     character(len=*), parameter :: subname='(med_phases_post_rof)'
     !---------------------------------------
 
@@ -157,7 +157,7 @@ contains
 
     ! unclear why this can't be in med_phases_post_rof_init, possibly pio not initialised
     if ((spread_rofi_nh .or. spread_rofi_sh) .and. first_time) then
-        call med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
+        call med_phases_post_rof_init_rof_spread_rofi(gcomp, fields_to_spread_runoff, rof2ocn_ice_spread, comprof, rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) return
         first_time=.false.
     endif
@@ -203,7 +203,7 @@ contains
           return
         end if
         if (exists) then
-          call med_phases_post_rof_spread_rofi(gcomp, fields_to_spread_runoff(n), rc)
+          call med_phases_post_rof_spread_rofi(gcomp, fields_to_spread_runoff(n), FBrof_r, comprof, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
         else
           call shr_log_error(string=trim(subname)//" Runoff field to spread: "//trim(fields_to_spread_runoff(n))//" does not exist", line=__LINE__,file=u_FILE_u, rc=rc)
@@ -459,13 +459,16 @@ contains
 
   end subroutine med_phases_post_rof_remove_negative_runoff
 
-  subroutine med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
+  subroutine med_phases_post_rof_init_rof_spread_rofi(gcomp, fields_to_spread_runoff, rof2ocn_ice_spread, comp, rc)
     !---------------------------------------------------------------
     use med_io_mod       , only : med_io_read
     use shr_reprosum_mod , only : shr_reprosum_calc
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
+    character(len=*), intent(in) :: fields_to_spread_runoff(:)
+    character(len=CL) :: rof2ocn_ice_spread
+    integer, intent(in) :: comp
     integer, intent(out) :: rc
 
 
@@ -478,12 +481,11 @@ contains
     real(r8), allocatable:: rof2ocn_a_weight(:,:)
     real(r8)            :: global_sum(2) ! Antarctic, Greenland (frozen) runoff
     integer :: n, i, month, comm
+    logical :: error = .false.
 
     integer, parameter :: dbug_threshold = 0 ! threshold for writing debug information in this subroutine
     character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_init_rof_spread_rofi)'
     !---------------------------------------
-
-    ! to do - make component configurable (could be comprof or compatm)
 
     rc = ESMF_SUCCESS
 
@@ -508,7 +510,7 @@ contains
     ! Create module fields on rof mesh
     ! -------------------------------
 
-    call fldbun_getmesh(is_local%wrap%FBImp(comprof,comprof), mesh_l, rc)
+    call fldbun_getmesh(is_local%wrap%FBImp(comp,comp), mesh_l, rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
     FBrof_pattern = ESMF_FieldBundleCreate(name='FBrof_pattern', rc=rc)
@@ -533,8 +535,8 @@ contains
     call med_io_read(rof2ocn_ice_spread, vm, FBrof_pattern, pre='pattern', ungridded_nc=.true.,  rc=rc)
     if (chkerr(rc,__LINE__,u_FILE_u)) return
 
-    areas => is_local%wrap%mesh_info(comprof)%areas
-    lats => is_local%wrap%mesh_info(comprof)%lats
+    areas => is_local%wrap%mesh_info(comp)%areas
+    lats => is_local%wrap%mesh_info(comp)%lats
 
     allocate(rof2ocn_a_weight(size(areas),2))
 
@@ -566,33 +568,29 @@ contains
         if (global_sum(1) < (100.0_r8 * tiny(1.0_r8))) then
           if (maintask) write(logunit,*) trim(subname)//": In rof2ocn_spread file, "//&
             "Southern hemisphere sum is zero, or negative. Month = ",month, 'global_sum = ',global_sum(1)
-          spread_rofi_sh = .false.
+          error = .true.
         endif
         if (global_sum(2) < (100.0_r8 * tiny(1.0_r8))) then
           if (maintask) write(logunit,*) trim(subname)//": In rof2ocn_spread file, "//&
             "Northern hemisphere sum is zero, or negative. Month = ",month, 'global_sum = ',global_sum(2)
-          spread_rofi_nh = .false.
+          error = .true.
         endif
 
         ! adjust correction so that it's sums to 1 in each hemisphere
-        if (spread_rofi_sh) then
-          do i = 1, size(areas)
-            if (lats(i) < 0.0_r8) then
-              rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(1)
-            end if
-          end do
-        end if
-        if (spread_rofi_nh) then
-          do i = 1, size(areas)
-            if (lats(i) >= 0.0_r8) then
-              rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(2)
-            end if
-          end do
-        end if
+        do i = 1, size(areas)
+          if (lats(i) < 0.0_r8) then
+            rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(1)
+          end if
+        end do
+        do i = 1, size(areas)
+          if (lats(i) >= 0.0_r8) then
+            rof2ocn_spread(i,month) = rof2ocn_spread(i,month) / global_sum(2)
+          end if
+        end do
 
       enddo ! month
 
-      if ( .not. (spread_rofi_nh .or. spread_rofi_sh)) then
+      if (error) then
           call shr_log_error(string=trim(subname)//": error in rof2ocn_spread file, "//&
             "sum in each hemispheres is zero, or negative", line=__LINE__,file=u_FILE_u, rc=rc)
           return
@@ -607,7 +605,7 @@ contains
 
   end subroutine med_phases_post_rof_init_rof_spread_rofi
 
-  subroutine med_phases_post_rof_spread_rofi(gcomp, field_name, rc)
+  subroutine med_phases_post_rof_spread_rofi(gcomp, field_name, field_bundle, comp, rc)
     !---------------------------------------------------------------
     ! For one runoff field, spread runoff according to the pattern prescribed in spread_rofi_weights.
     use shr_reprosum_mod , only : shr_reprosum_calc
@@ -615,6 +613,8 @@ contains
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
     character(len=*), intent(in) :: field_name  ! name of runoff flux field to process
+    type(ESMF_FieldBundle) :: field_bundle
+    integer, intent(in) :: comp
     integer, intent(out) :: rc
 
     ! local variables
@@ -652,29 +652,25 @@ contains
     call ESMF_GridCompGetInternalState(gcomp, is_local, rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    areas => is_local%wrap%mesh_info(comprof)%areas
-    lats => is_local%wrap%mesh_info(comprof)%lats
+    areas => is_local%wrap%mesh_info(comp)%areas
+    lats => is_local%wrap%mesh_info(comp)%lats
 
-    call fldbun_getdata1d(FBrof_r, trim(field_name), runoff_flux, rc=rc)
+    call fldbun_getdata1d(field_bundle, trim(field_name), runoff_flux, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     allocate(rof2ocn_a_weight(size(runoff_flux),2))
 
     rof2ocn_a_weight = 0.0_r8
-    if (spread_rofi_sh) then
-      do n = 1, size(runoff_flux)
-        if (lats(n) < 0.0_r8) then
-          rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
-        end if
-      end do
-    end if
-    if (spread_rofi_nh) then
-      do n = 1, size(runoff_flux)
-        if (lats(n) >= 0.0_r8) then
-          rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
-        end if
-      end do
-    end if
+    do n = 1, size(runoff_flux)
+      if (lats(n) < 0.0_r8) then
+        rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
+      end if
+    end do
+    do n = 1, size(runoff_flux)
+      if (lats(n) >= 0.0_r8) then
+        rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
+      end if
+    end do
 
     ! Get the MPI communicator from the VM
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
@@ -697,41 +693,33 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! spread runoff by the saved pattern for the model month
-    if (spread_rofi_sh) then
-      do n = 1, size(runoff_flux)
-        if (lats(n) < 0.0_r8) then
-            runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(1)
-        end if
-      end do
-    end if
+    do n = 1, size(runoff_flux)
+      if (lats(n) < 0.0_r8) then
+          runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(1)
+      end if
+    end do
 
-    if (spread_rofi_nh) then
-      do n = 1, size(runoff_flux)
-        if (lats(n) >= 0.0_r8) then
-            runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(2)
-        end if
-      end do
-    end if
+    do n = 1, size(runoff_flux)
+      if (lats(n) >= 0.0_r8) then
+          runoff_flux(n) = rof2ocn_spread(n,mm) * global_sum(2)
+      end if
+    end do
 
     if (dbug_flag > dbug_threshold) then
 
       ! calculate the new global sum (after correction), difference should be equal to 0
       rof2ocn_a_weight = 0.0_r8
-      if (spread_rofi_sh) then
-        do n = 1, size(runoff_flux)
-          if (lats(n) < 0.0_r8) then
-            rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
-          end if
-        end do
-      end if
+      do n = 1, size(runoff_flux)
+        if (lats(n) < 0.0_r8) then
+          rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
+        end if
+      end do
 
-      if (spread_rofi_nh) then
-        do n = 1, size(runoff_flux)
-          if (lats(n) >= 0.0_r8) then
-            rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
-          end if
-        end do
-      end if
+      do n = 1, size(runoff_flux)
+        if (lats(n) >= 0.0_r8) then
+          rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
+        end if
+      end do
 
       call shr_reprosum_calc(rof2ocn_a_weight, global_sum, size(runoff_flux), size(runoff_flux), 2, &
                     commid=comm)
