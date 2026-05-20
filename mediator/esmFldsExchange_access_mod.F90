@@ -506,15 +506,11 @@ module esmFldsExchange_access_mod
       deallocate(F_flds)
 
       ! momentum transfer
-      call addmap_from(compice, 'Fioi_taux', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Foxx_taux', mrg_from=compice, mrg_fld='Fioi_taux', mrg_type='merge', mrg_fracname='ifrac')
       call addmap_from(compatm, 'Faxa_taux', compocn, mappatch, 'one', 'unset')
-      call addmrg_to(compocn, 'Foxx_taux', mrg_from=compatm, mrg_fld='Faxa_taux', mrg_type='merge', mrg_fracname='ofrac')
+      call addmrg_to(compocn, 'Foxx_taux', mrg_from=compatm, mrg_fld='Faxa_taux', mrg_type='copy')
 
-      call addmap_from(compice, 'Fioi_tauy', compocn, mapfcopy, 'unset', 'unset')
-      call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compice, mrg_fld='Fioi_tauy', mrg_type='merge', mrg_fracname='ifrac')
       call addmap_from(compatm, 'Faxa_tauy', compocn, mappatch, 'one', 'unset')
-      call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compatm, mrg_fld='Faxa_tauy', mrg_type='merge', mrg_fracname='ofrac')
+      call addmrg_to(compocn, 'Foxx_tauy', mrg_from=compatm, mrg_fld='Faxa_tauy', mrg_type='copy')
 
       !=====================================================================
       ! FIELDS TO ICE (compice)
