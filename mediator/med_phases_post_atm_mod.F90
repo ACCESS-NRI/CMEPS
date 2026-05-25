@@ -14,7 +14,7 @@ module med_phases_post_atm_mod
        __FILE__
   logical :: first_time = .true.
   character(len=9), parameter :: fields_to_spread_runoff(1) = &
-       ['Foxx_rofi']
+       ['Faoa_rofi']
 
 !-----------------------------------------------------------------------------
 contains
