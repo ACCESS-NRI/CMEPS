@@ -7,7 +7,7 @@ module med_phases_post_rof_mod
   use ESMF                  , only : ESMF_Clock, ESMF_Time, ESMF_ClockIsCreated
   use ESMF                  , only : ESMF_ClockGet, ESMF_TimeGet, ESMF_ClockIsCreated
   use ESMF                  , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS, ESMF_LOGMSG_ERROR
-  use ESMF                  , only : ESMF_GridComp, ESMF_GridCompGet
+  use ESMF                  , only : ESMF_GridComp, ESMF_GridCompGet, ESMF_VMGet
   use ESMF                  , only : ESMF_Mesh, ESMF_MESHLOC_ELEMENT, ESMF_TYPEKIND_R8
   use ESMF                  , only : ESMF_Field, ESMF_FieldCreate, ESMF_FieldGet
   use ESMF                  , only : ESMF_FieldBundle, ESMF_FieldBundleCreate
@@ -462,6 +462,7 @@ contains
   subroutine med_phases_post_rof_init_rof_spread_rofi(gcomp, rc)
     !---------------------------------------------------------------
     use med_io_mod       , only : med_io_read
+    use shr_reprosum_mod , only : shr_reprosum_calc
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
@@ -474,8 +475,9 @@ contains
     type(ESMF_field) :: field_l                ! climatology, 12 months
     real(r8), pointer   :: areas(:), lats(:)
     real(r8), pointer   :: rof2ocn_spread(:,:)
-    real(r8)            :: local_sum(2), global_sum(2) ! Antarctic, Greenland (frozen) runoff
-    integer :: n, i, month
+    real(r8), allocatable:: rof2ocn_a_weight(:,:)
+    real(r8)            :: global_sum(2) ! Antarctic, Greenland (frozen) runoff
+    integer :: n, i, month, comm
 
     integer, parameter :: dbug_threshold = 0 ! threshold for writing debug information in this subroutine
     character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_init_rof_spread_rofi)'
@@ -497,6 +499,11 @@ contains
 
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ! Get the MPI communicator from the VM
+    call ESMF_VMGet(vm, mpiCommunicator=comm, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
     ! -------------------------------
     ! Create module fields on rof mesh
     ! -------------------------------
@@ -529,6 +536,8 @@ contains
     areas => is_local%wrap%mesh_info(comprof)%areas
     lats => is_local%wrap%mesh_info(comprof)%lats
 
+    allocate(rof2ocn_a_weight(size(areas),2))
+
     ! normalise each month in each hemisphere of the spreading pattern
     do n = 1, size(fields_to_spread_runoff)
 
@@ -541,18 +550,18 @@ contains
 
       do month = 1, 12
         ! calculate sum of spreading 
-        local_sum = 0.0_r8
+        rof2ocn_a_weight = 0.0_r8
         do i = 1, size(areas)
           if (lats(i) < 0.0_r8) then
-            local_sum(1) = local_sum(1) + areas(i) * rof2ocn_spread(i,month)
+            rof2ocn_a_weight(i,1) = areas(i) * rof2ocn_spread(i,month)
           else
-            local_sum(2) = local_sum(2) + areas(i) * rof2ocn_spread(i,month)
+            rof2ocn_a_weight(i,2) = areas(i) * rof2ocn_spread(i,month)
           end if
         end do
 
-        call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
-            reduceflag=ESMF_REDUCE_SUM, rc=rc)
-        if (ChkErr(rc,__LINE__,u_FILE_u)) return
+        ! global sum of field (in each hemisphere) to use for normalisation
+        call shr_reprosum_calc(rof2ocn_a_weight, global_sum, size(areas), size(areas), 2, &
+                               commid=comm)
 
         if (global_sum(1) < (100.0_r8 * tiny(1.0_r8))) then
           if (maintask) write(logunit,*) trim(subname)//": In rof2ocn_spread file, "//&
@@ -601,6 +610,7 @@ contains
   subroutine med_phases_post_rof_spread_rofi(gcomp, field_name, rc)
     !---------------------------------------------------------------
     ! For one runoff field, spread runoff according to the pattern prescribed in spread_rofi_weights.
+    use shr_reprosum_mod , only : shr_reprosum_calc
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
@@ -614,9 +624,10 @@ contains
     type(ESMF_Time)     :: currTime
     real(r8), pointer   :: runoff_flux(:)   ! temporary 1d pointer
     real(r8), pointer   :: rof2ocn_spread(:,:)
+    real(r8), allocatable:: rof2ocn_a_weight(:,:)
     real(r8), pointer   :: areas(:), lats(:)
-    real(r8)            :: local_sum(2), global_sum(2) !Antarctic,Greenland (frozen) runoff
-    integer :: n, mm
+    real(r8)            :: global_sum(2) !Antarctic,Greenland (frozen) runoff
+    integer :: n, mm, comm
 
     integer, parameter :: dbug_threshold = 20 ! threshold for writing debug information in this subroutine
     character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_spread_rofi)'
@@ -647,27 +658,34 @@ contains
     call fldbun_getdata1d(FBrof_r, trim(field_name), runoff_flux, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    local_sum = 0.0_r8
+    allocate(rof2ocn_a_weight(size(runoff_flux),2))
+
+    rof2ocn_a_weight = 0.0_r8
     if (spread_rofi_sh) then
       do n = 1, size(runoff_flux)
         if (lats(n) < 0.0_r8) then
-          local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
+          rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
         end if
       end do
     end if
     if (spread_rofi_nh) then
       do n = 1, size(runoff_flux)
         if (lats(n) >= 0.0_r8) then
-          local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
+          rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
         end if
       end do
     end if
 
+    ! Get the MPI communicator from the VM
     call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    call ESMF_VMAllreduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
-         reduceflag=ESMF_REDUCE_SUM, rc=rc)
+    call ESMF_VMGet(vm, mpiCommunicator=comm, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
+
+    ! do the global sum (in each hemisphere) of this field
+    call shr_reprosum_calc(rof2ocn_a_weight, global_sum, size(runoff_flux), size(runoff_flux), 2, &
+                        commid=comm)
+
     if (maintask .and. dbug_flag > dbug_threshold) then
       write(logunit,'(a)') subname//' Before correction: '//trim(field_name)
       write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
@@ -698,11 +716,11 @@ contains
     if (dbug_flag > dbug_threshold) then
 
       ! calculate the new global sum (after correction), difference should be equal to 0
-      local_sum = 0.0_r8
+      rof2ocn_a_weight = 0.0_r8
       if (spread_rofi_sh) then
         do n = 1, size(runoff_flux)
           if (lats(n) < 0.0_r8) then
-            local_sum(1) = local_sum(1) + areas(n) * runoff_flux(n)
+            rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
           end if
         end do
       end if
@@ -710,16 +728,13 @@ contains
       if (spread_rofi_nh) then
         do n = 1, size(runoff_flux)
           if (lats(n) >= 0.0_r8) then
-            local_sum(2) = local_sum(2) + areas(n) * runoff_flux(n)
+            rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
           end if
         end do
       end if
 
-      call ESMF_GridCompGet(gcomp, vm=vm, rc=rc)
-      if (ChkErr(rc,__LINE__,u_FILE_u)) return
-      call ESMF_VMReduce(vm, senddata=local_sum, recvdata=global_sum, count=2, &
-          reduceflag=ESMF_REDUCE_SUM, rootPet=0, rc=rc)
-      if (ChkErr(rc,__LINE__,u_FILE_u)) return
+      call shr_reprosum_calc(rof2ocn_a_weight, global_sum, size(runoff_flux), size(runoff_flux), 2, &
+                    commid=comm)
       if (maintask) then
           write(logunit,'(a)') subname//' After correction: '//trim(field_name)
           write(logunit,'(a,e27.17)') subname//' global_sh = ', global_sum(1)
