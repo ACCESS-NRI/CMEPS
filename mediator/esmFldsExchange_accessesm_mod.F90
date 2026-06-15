@@ -332,22 +332,14 @@ module esmFldsExchange_accessesm_mod
       ! FIELDS TO ATMOSPHERE
       !=====================================================================
 
-      fldname = trim('So_t')
-      if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
-         fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname), rc=rc) &
-        ) then
-        call addmap_from(compocn, trim(fldname), compatm, mapbilnr, 'one', 'unset')
-        call addmrg_to(compatm, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
-     end if
-
-      allocate(S_flds(2))
-      S_flds = [character(len=CS) :: 'So_u', 'So_v']
+      allocate(S_flds(3))
+      S_flds = [character(len=CS) :: 'So_t', 'So_u', 'So_v']
       do n = 1,size(S_flds)
          fldname = trim(S_flds(n))
          if (fldchk(is_local%wrap%FBExp(compatm), trim(fldname), rc=rc) .and. &
              fldchk(is_local%wrap%FBImp(compocn, compocn), trim(fldname), rc=rc) &
             ) then
-            call addmap_from(compocn, trim(fldname), compatm, mappatch, 'one', 'unset')
+            call addmap_from(compocn, trim(fldname), compatm, mapconsf, 'ofrac', 'unset')
             call addmrg_to(compatm, trim(fldname), mrg_from=compocn, mrg_fld=trim(fldname), mrg_type='copy')
          end if
       end do
