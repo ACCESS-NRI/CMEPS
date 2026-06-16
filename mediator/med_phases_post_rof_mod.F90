@@ -733,7 +733,7 @@ contains
     character(len=CL) :: rofi_spread
 
     integer :: n
-    logical :: exists
+    logical :: isPresent, isSet
 
     ! unclear why this can't be in med_phases_post_rof_init, possibly pio not initialised
     if (.not. spreading_initialized) then
@@ -754,12 +754,12 @@ contains
 
     if (spread_rofi_nh .or. spread_rofi_sh) then
       do n = 1, size(fields_to_spread_runoff)
-        call ESMF_FieldBundleGet(field_bundle, fieldName=trim(fields_to_spread_runoff(n)), isPresent=exists, rc=rc)
+        call ESMF_FieldBundleGet(field_bundle, fieldName=trim(fields_to_spread_runoff(n)), isPresent=isPresent, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) then
           call shr_log_error(string=trim(subname)//" Error checking field: "//trim(fields_to_spread_runoff(n)), line=__LINE__,file=u_FILE_u, rc=rc)
           return
         end if
-        if (exists) then
+        if (isPresent) then
           call med_phases_post_rof_spread_rofi(gcomp, fields_to_spread_runoff(n), field_bundle, comp, rc)
           if (ChkErr(rc,__LINE__,u_FILE_u)) return
         else
