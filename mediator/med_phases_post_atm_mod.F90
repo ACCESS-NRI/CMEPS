@@ -12,7 +12,6 @@ module med_phases_post_atm_mod
 
   character(*), parameter :: u_FILE_u  = &
        __FILE__
-  logical :: first_time = .true.
   character(len=9), parameter :: fields_to_spread_runoff(1) = &
        ['Faoa_rofi']
 
@@ -27,7 +26,6 @@ contains
     !---------------------------------------
 
     use NUOPC_Mediator        , only : NUOPC_MediatorGet
-    use NUOPC                 , only : NUOPC_CompAttributeGet
     use ESMF                  , only : ESMF_Clock, ESMF_ClockIsCreated
     use ESMF                  , only : ESMF_GridComp, ESMF_GridCompGet, ESMF_FieldBundleGet
     use ESMF                  , only : ESMF_LogWrite, ESMF_LOGMSG_INFO, ESMF_SUCCESS
@@ -39,7 +37,6 @@ contains
     use med_utils_mod         , only : chkerr    => med_utils_ChkErr
     use med_internalstate_mod , only : compocn, compatm, compice, complnd, compwav, coupling_mode
     use perf_mod              , only : t_startf, t_stopf
-    use shr_log_mod            , only : shr_log_error
     use med_phases_post_rof_mod, only: med_phases_post_rof_spread_rofi_field_bundle
 
     ! input/output variables
@@ -50,9 +47,6 @@ contains
     type(InternalState) :: is_local
     type(ESMF_Clock)    :: dClock
     character(len=*), parameter :: subname='(med_phases_post_atm)'
-    character(len=CL) :: atm2ocn_ice_spread
-    logical       :: isPresent, isSet
-    integer :: n
     !-------------------------------------------------------------------------------
 
     rc = ESMF_SUCCESS
