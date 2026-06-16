@@ -433,7 +433,7 @@ contains
     type(ESMF_GridComp)  :: gcomp
     character(len=*), intent(in) :: fields_to_spread_runoff(:)
     character(len=CL) :: rofi_spread
-    integer, intent(in) :: comp
+    integer, intent(in) :: comp ! the component mesh the field is being spread on
     integer, intent(out) :: rc
 
 
@@ -582,7 +582,7 @@ contains
     type(ESMF_GridComp)  :: gcomp
     character(len=*), intent(in) :: field_name  ! name of runoff flux field to process
     type(ESMF_FieldBundle) :: field_bundle
-    integer, intent(in) :: comp
+    integer, intent(in) :: comp ! the component mesh the field is being spread on
     integer, intent(out) :: rc
 
     ! local variables
@@ -727,7 +727,7 @@ contains
     type(ESMF_GridComp)  :: gcomp
     character(len=*), intent(in) :: fields_to_spread_runoff(:)
     type(ESMF_FieldBundle) :: field_bundle
-    integer, intent(in) :: comp
+    integer, intent(in) :: comp ! the component mesh the field is being spread on
     integer, intent(out) :: rc
 
     character(len=CL) :: rofi_spread
