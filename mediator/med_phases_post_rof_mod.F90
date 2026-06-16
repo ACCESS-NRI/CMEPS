@@ -730,10 +730,13 @@ contains
     integer, intent(in) :: comp ! the component mesh the field is being spread on
     integer, intent(out) :: rc
 
+    ! local variables
     character(len=CL) :: rofi_spread
-
     integer :: n
     logical :: isPresent, isSet
+
+    character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_spread_rofi_field_bundle)'
+    !---------------------------------------
 
     ! unclear why this can't be in med_phases_post_rof_init, possibly pio not initialised
     if (.not. spreading_initialized) then
