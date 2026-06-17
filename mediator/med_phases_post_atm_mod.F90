@@ -129,6 +129,7 @@ contains
     end if
 
     if (trim(coupling_mode) == 'access-esm') then
+    # in access-esm, runoff comes from the atmosphere component, so spreading of iceberg melt here
        call med_phases_post_rof_spread_rofi_field_bundle(gcomp, fields_to_spread_runoff, is_local%wrap%FBImp(compatm,compocn), compocn, rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
