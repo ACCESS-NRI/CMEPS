@@ -753,7 +753,12 @@ contains
         end if
 
         spreading_initialized = .true.
-    endif
+if (maintask) then
+      write(logunit,'(a,l7)') trim(subname)//' spread_rofi_Greenland = ', spread_rofi_nh
+      write(logunit,'(a,l7)') trim(subname)//' spread_rofi_Antarctic = ', spread_rofi_sh
+      if (spread_rofi_nh .or spread_rofi_sh) write(logunit,'(a)') trim(subname)//' rof2ocn_ice_spread = '//trim(rof2ocn_ice_spread)
+    end if
+endif
 
     if (spread_rofi_nh .or. spread_rofi_sh) then
       do n = 1, size(fields_to_spread_runoff)
