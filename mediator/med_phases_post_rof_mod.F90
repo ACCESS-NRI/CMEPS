@@ -756,7 +756,7 @@ contains
         if (maintask) then
           write(logunit,'(a,l7)') trim(subname)//' spread_rofi_Greenland = ', spread_rofi_nh
           write(logunit,'(a,l7)') trim(subname)//' spread_rofi_Antarctic = ', spread_rofi_sh
-          if (spread_rofi_nh .or. spread_rofi_sh) write(logunit,'(a)') trim(subname)//' rof2ocn_ice_spread = '//trim(rof2ocn_ice_spread)
+          if (spread_rofi_nh .or. spread_rofi_sh) write(logunit,'(a)') trim(subname)//' rofi_spread = '//trim(rofi_spread)
         end if
     endif
 
