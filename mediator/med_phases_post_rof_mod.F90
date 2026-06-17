@@ -759,7 +759,7 @@ contains
       do n = 1, size(fields_to_spread_runoff)
         call ESMF_FieldBundleGet(field_bundle, fieldName=trim(fields_to_spread_runoff(n)), isPresent=isPresent, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) then
-          call shr_log_error(string=trim(subname)//" Error checking field: "//trim(fields_to_spread_runoff(n)), line=__LINE__,file=u_FILE_u, rc=rc)
+          call shr_log_error(string=trim(subname)//" Error getting field: "//trim(fields_to_spread_runoff(n)), line=__LINE__,file=u_FILE_u, rc=rc)
           return
         end if
         if (isPresent) then
