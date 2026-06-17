@@ -49,7 +49,6 @@ module med_phases_post_rof_mod
   logical :: remove_negative_runoff_lnd
   logical :: remove_negative_runoff_glc
   logical :: spread_rofi_nh, spread_rofi_sh
-  logical :: spreading_initialized = .false.
 
   character(len=9), parameter :: fields_to_remove_negative_runoff_lnd(2) = &
        ['Forr_rofl', &
@@ -734,6 +733,7 @@ contains
     character(len=CL) :: rofi_spread
     integer :: n
     logical :: isPresent, isSet
+    logical :: spreading_initialized = .false.
 
     character(len=*), parameter :: subname='(med_phases_post_rof_mod: med_phases_post_rof_spread_rofi_field_bundle)'
     !---------------------------------------
