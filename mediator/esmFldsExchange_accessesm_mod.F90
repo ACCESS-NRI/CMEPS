@@ -296,7 +296,7 @@ module esmFldsExchange_accessesm_mod
       use med_internalstate_mod , only : InternalState
       use med_internalstate_mod , only : mapbilnr, mapconsf, mapconsd, mappatch
       use med_internalstate_mod , only : mapfcopy, mapnstod, mapnstod_consd
-      use med_internalstate_mod , only : mapfillv_bilnr
+      use med_internalstate_mod , only : mapfillv_bilnr, mappatch_uv3d
       use med_internalstate_mod , only : mapnstod_consf
 
       ! input/output parameters:
@@ -477,14 +477,14 @@ module esmFldsExchange_accessesm_mod
       if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_taux'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
          ) then
-         call addmap_from(compatm, trim('Faxa_taux'), compocn, mappatch, 'one', 'unset')
+         call addmap_from(compatm, trim('Faxa_taux'), compocn, mappatch_uv3d, 'one', 'unset')
          call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='merge', mrg_fracname='ofrac')
       end if
 
       if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_tauy'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
          ) then
-         call addmap_from(compatm, trim('Faxa_tauy'), compocn, mappatch, 'one', 'unset')
+         call addmap_from(compatm, trim('Faxa_tauy'), compocn, mappatch_uv3d, 'one', 'unset')
          call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='merge', mrg_fracname='ofrac')
       end if
 
@@ -546,14 +546,14 @@ module esmFldsExchange_accessesm_mod
       if (fldchk(is_local%wrap%FBExp(compice), trim('Faia_taux'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
          ) then
-         call addmap_from(compatm, trim('Faxa_taux'), compice, mappatch, 'one', 'unset')
+         call addmap_from(compatm, trim('Faxa_taux'), compice, mappatch_uv3d, 'one', 'unset')
          call addmrg_to(compice, trim('Faia_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='copy')
       end if
 
       if (fldchk(is_local%wrap%FBExp(compice), trim('Faia_tauy'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
          ) then
-         call addmap_from(compatm, trim('Faxa_tauy'), compice, mappatch, 'one', 'unset')
+         call addmap_from(compatm, trim('Faxa_tauy'), compice, mappatch_uv3d, 'one', 'unset')
          call addmrg_to(compice, trim('Faia_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='copy')
       end if
 
