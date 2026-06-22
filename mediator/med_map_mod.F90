@@ -950,6 +950,7 @@ contains
     use med_internalstate_mod , only : nmappers, mapfcopy
     use med_internalstate_mod , only : mappatch_uv3d, mappatch, mapbilnr_uv3d, mapconsf_uv3d, mapbilnr
     use med_internalstate_mod , only : packed_data_type
+    use med_internalstate_mod , only : coupling_mode
     use med_methods_mod       , only : Field_diagnose => med_methods_Field_diagnose
 
     ! input/output variables
