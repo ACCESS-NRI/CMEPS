@@ -578,7 +578,7 @@ contains
 
   subroutine med_phases_post_rof_spread_rofi(&
     gcomp, field_name, &
-    field_bundlle_src, field_bundlle_dst, src_comp, dst_comp, rc&
+    field_bundle_src, field_bundle_dst, src_comp, dst_comp, rc&
   )
     !---------------------------------------------------------------
     ! For one runoff field, spread runoff according to the pattern prescribed in spread_rofi_weights.
@@ -602,7 +602,7 @@ contains
     real(r8), pointer   :: runoff_flux_dst(:)   ! temporary 1d pointer
     real(r8), pointer   :: rof2ocn_spread(:,:)
     real(r8), allocatable:: rof2ocn_a_weight(:,:)
-    real(r8), pointer   :: src_areas(:), dst_areas(:), src_lat(:), dst_lats(:)
+    real(r8), pointer   :: src_areas(:), dst_areas(:), src_lats(:), dst_lats(:)
     real(r8)            :: global_sum(2) !Antarctic,Greenland (frozen) runoff
     integer :: n, mm, comm
 
@@ -641,7 +641,7 @@ contains
     call fldbun_getdata1d(field_bundle_dst, trim(field_name), runoff_flux_dst, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-    allocate(rof2ocn_a_weight(size(runoff_flux),2))
+    allocate(rof2ocn_a_weight(size(runoff_flux_src),2))
 
     rof2ocn_a_weight = 0.0_r8
     if (spread_rofi_sh) then
@@ -696,9 +696,11 @@ contains
       end do
     end if
 
-    if (dbug_flag > dbug_threshold) then
+    deallocate(rof2ocn_a_weight)
 
+    if (dbug_flag > dbug_threshold) then
       ! calculate the new global sum (after correction), difference should be equal to 0
+      allocate(rof2ocn_a_weight(size(runoff_flux_dst),2))
       rof2ocn_a_weight = 0.0_r8
       if (spread_rofi_sh) then
         do n = 1, size(runoff_flux_dst)
@@ -782,7 +784,7 @@ contains
 
     if (spread_rofi_nh .or. spread_rofi_sh) then
       do n = 1, size(fields_to_spread_runoff)
-        call ESMF_FieldBundleGet(field_bundle, fieldName=trim(fields_to_spread_runoff(n)), isPresent=isPresent, rc=rc)
+        call ESMF_FieldBundleGet(field_bundle_src, fieldName=trim(fields_to_spread_runoff(n)), isPresent=isPresent, rc=rc)
         if (ChkErr(rc,__LINE__,u_FILE_u)) then
           call shr_log_error(string=trim(subname)//" Error getting field: "//trim(fields_to_spread_runoff(n)), line=__LINE__,file=u_FILE_u, rc=rc)
           return
