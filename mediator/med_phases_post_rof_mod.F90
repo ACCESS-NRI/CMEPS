@@ -645,16 +645,16 @@ contains
 
     rof2ocn_a_weight = 0.0_r8
     if (spread_rofi_sh) then
-      do n = 1, size(runoff_flux)
-        if (lats(n) < 0.0_r8) then
-          rof2ocn_a_weight(n,1) = areas(n) * runoff_flux(n)
+      do n = 1, size(runoff_flux_src)
+        if (src_lats(n) < 0.0_r8) then
+          rof2ocn_a_weight(n,1) = src_areas(n) * runoff_flux_src(n)
         end if
       end do
     end if
     if (spread_rofi_nh) then
-      do n = 1, size(runoff_flux)
-        if (lats(n) >= 0.0_r8) then
-          rof2ocn_a_weight(n,2) = areas(n) * runoff_flux(n)
+      do n = 1, size(runoff_flux_src)
+        if (src_lats(n) >= 0.0_r8) then
+          rof2ocn_a_weight(n,2) = src_areas(n) * runoff_flux_src(n)
         end if
       end do
     end if
@@ -666,7 +666,7 @@ contains
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! do the global sum (in each hemisphere) of this field
-    call shr_reprosum_calc(rof2ocn_a_weight, global_sum, size(runoff_flux), size(runoff_flux), 2, &
+    call shr_reprosum_calc(rof2ocn_a_weight, global_sum, size(runoff_flux_src), size(runoff_flux_src), 2, &
                         commid=comm)
 
     if (maintask .and. dbug_flag > dbug_threshold) then
