@@ -464,29 +464,29 @@ module esmFldsExchange_accessesm_mod
           fldchk(is_local%wrap%FBImp(compice, compice), trim('Fioi_taux'),rc=rc) &
          ) then
          call addmap_from(compice, trim('Fioi_taux'), compocn, mapfcopy, 'unset', 'unset')
-         call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compice, mrg_fld=trim('Fioi_taux'), mrg_type='merge', mrg_fracname='ifrac')
+         call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compice, mrg_fld=trim('Fioi_taux'), mrg_type='copy')
       end if
 
       if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_tauy'), rc=rc) .and. &
           fldchk(is_local%wrap%FBImp(compice, compice), trim('Fioi_tauy'),rc=rc) &
          ) then
          call addmap_from(compice, trim('Fioi_tauy'), compocn, mapfcopy, 'unset', 'unset')
-         call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compice, mrg_fld=trim('Fioi_tauy'), mrg_type='merge', mrg_fracname='ifrac')
+         call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compice, mrg_fld=trim('Fioi_tauy'), mrg_type='copy')
       end if
 
-      if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_taux'), rc=rc) .and. &
-          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
-         ) then
-         call addmap_from(compatm, trim('Faxa_taux'), compocn, mappatch, 'one', 'unset')
-         call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='merge', mrg_fracname='ofrac')
-      end if
+    !   if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_taux'), rc=rc) .and. &
+    !       fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_taux'),rc=rc) &
+    !      ) then
+    !      call addmap_from(compatm, trim('Faxa_taux'), compocn, mappatch, 'one', 'unset')
+    !      call addmrg_to(compocn, trim('Foxx_taux'), mrg_from=compatm, mrg_fld=trim('Faxa_taux'), mrg_type='merge', mrg_fracname='ofrac')
+    !   end if
 
-      if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_tauy'), rc=rc) .and. &
-          fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
-         ) then
-         call addmap_from(compatm, trim('Faxa_tauy'), compocn, mappatch, 'one', 'unset')
-         call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='merge', mrg_fracname='ofrac')
-      end if
+    !   if (fldchk(is_local%wrap%FBExp(compocn), trim('Foxx_tauy'), rc=rc) .and. &
+    !       fldchk(is_local%wrap%FBImp(compatm, compatm), trim('Faxa_tauy'),rc=rc) &
+    !      ) then
+    !      call addmap_from(compatm, trim('Faxa_tauy'), compocn, mappatch, 'one', 'unset')
+    !      call addmrg_to(compocn, trim('Foxx_tauy'), mrg_from=compatm, mrg_fld=trim('Faxa_tauy'), mrg_type='merge', mrg_fracname='ofrac')
+    !   end if
 
       !=====================================================================
       ! FIELDS TO ICE (compice)
