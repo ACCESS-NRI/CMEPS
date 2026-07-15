@@ -950,6 +950,7 @@ contains
     use med_internalstate_mod , only : nmappers, mapfcopy
     use med_internalstate_mod , only : mappatch_uv3d, mappatch, mapbilnr_uv3d, mapconsf_uv3d, mapbilnr
     use med_internalstate_mod , only : packed_data_type
+    use med_internalstate_mod , only : coupling_mode
     use med_methods_mod       , only : Field_diagnose => med_methods_Field_diagnose
 
     ! input/output variables
@@ -1031,7 +1032,12 @@ contains
           if (mapindex == mappatch_uv3d) then
 
              ! For mappatch_uv3d do not use packed field bundles
-             call med_map_uv_cart3d(FBsrc, FBdst, routehandles, mappatch_uv3d, rc=rc)
+             if (trim(coupling_mode) == 'access-esm') then
+                call med_map_uv_cart3d(FBsrc, FBdst, routehandles, mappatch_uv3d, map_stress=.true., rc=rc)
+             else
+                call med_map_uv_cart3d(FBsrc, FBdst, routehandles, mappatch_uv3d, rc=rc)
+             end if
+
              if (chkerr(rc,__LINE__,u_FILE_u)) return
 
           else if (mapindex == mapbilnr_uv3d) then
