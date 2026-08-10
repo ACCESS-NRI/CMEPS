@@ -121,14 +121,6 @@ contains
        call t_stopf('MED:'//trim(subname)//' map_atm2wav')
     end if
 
-    ! Write atm inst, avg or aux if requested in mediator attributes
-    call NUOPC_MediatorGet(gcomp, driverClock=dClock, rc=rc)
-    if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    if (ESMF_ClockIsCreated(dclock)) then
-       call med_phases_history_write_comp(gcomp, compatm, rc=rc)
-       if (ChkErr(rc,__LINE__,u_FILE_u)) return
-    end if
-
     if (trim(coupling_mode) == 'access-esm') then
        ! in access-esm, runoff comes from the atmosphere component, so spreading of iceberg melt here
        call med_phases_post_rof_spread_rofi_field_bundle( &
@@ -136,6 +128,14 @@ contains
          is_local%wrap%FBImp(compatm,compatm), &
          is_local%wrap%FBImp(compatm,compocn), &
          compatm, compocn, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    end if
+
+    ! Write atm inst, avg or aux if requested in mediator attributes
+    call NUOPC_MediatorGet(gcomp, driverClock=dClock, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    if (ESMF_ClockIsCreated(dclock)) then
+       call med_phases_history_write_comp(gcomp, compatm, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
