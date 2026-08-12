@@ -12,6 +12,9 @@ module med_phases_post_atm_mod
 
   character(*), parameter :: u_FILE_u  = &
        __FILE__
+  character(len=9), parameter :: fields_to_spread_runoff(1) = &
+       ['Faoa_rofi']
+
 
 !-----------------------------------------------------------------------------
 contains
@@ -35,6 +38,7 @@ contains
     use med_utils_mod         , only : chkerr    => med_utils_ChkErr
     use med_internalstate_mod , only : compocn, compatm, compice, complnd, compwav, coupling_mode
     use perf_mod              , only : t_startf, t_stopf
+    use med_phases_post_rof_mod, only: med_phases_post_rof_spread_rofi_field_bundle
 
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
@@ -115,6 +119,16 @@ contains
             routehandles=is_local%wrap%RH(compatm,compwav,:), rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        call t_stopf('MED:'//trim(subname)//' map_atm2wav')
+    end if
+
+    if (trim(coupling_mode) == 'access-esm') then
+       ! in access-esm, runoff comes from the atmosphere component, so spreading of iceberg melt here
+       call med_phases_post_rof_spread_rofi_field_bundle( &
+         gcomp, fields_to_spread_runoff, &
+         is_local%wrap%FBImp(compatm,compatm), &
+         is_local%wrap%FBImp(compatm,compocn), &
+         compatm, compocn, rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
     ! Write atm inst, avg or aux if requested in mediator attributes
