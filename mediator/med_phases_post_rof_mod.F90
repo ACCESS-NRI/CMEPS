@@ -51,8 +51,9 @@ module med_phases_post_rof_mod
   logical :: spread_rofi_nh, spread_rofi_sh
   character(len=CL) :: rof2ocn_ice_spread
 
-  character(len=9), parameter :: fields_to_remove_negative_runoff_lnd(2) = &
+  character(len=9), parameter :: fields_to_remove_negative_runoff_lnd(3) = &
        ['Forr_rofl', &
+        'Forr_rofb', &
         'Forr_rofi']
   character(len=13), parameter :: fields_to_remove_negative_runoff_glc(2) = &
        ['Forr_rofl_glc', &

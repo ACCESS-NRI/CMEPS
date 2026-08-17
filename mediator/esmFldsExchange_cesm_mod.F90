@@ -2120,10 +2120,12 @@ contains
        ! fldlistFr(comprof) in order to be mapped correctly to the ocean but the ocean
        ! does not receive it so it is advertised but it will not be connected
        call addfld_from(comprof, 'Forr_rofl')
+       call addfld_from(comprof, 'Forr_rofb')
        call addfld_from(comprof, 'Forr_rofi')
        call addfld_from(comprof, 'Forr_rofl_glc')
        call addfld_from(comprof, 'Forr_rofi_glc')
        call addfld_to(compocn, 'Foxx_rofl')
+       call addfld_to(compocn, 'Foxx_rofb')
        call addfld_to(compocn, 'Foxx_rofi')
        call addfld_to(compocn, 'Forr_rofl_glc')
        call addfld_to(compocn, 'Forr_rofi_glc')
@@ -2174,6 +2176,22 @@ contains
           mrgfld_source = trim(mrgfld_source) //':Forr_rofl_glc'
         end if
         call addmrg_to(compocn, 'Foxx_rofl', mrg_from=comprof, mrg_fld=trim(mrgfld_source), mrg_type='sum')
+      end if
+
+      ! Ice shelf basal melt - mapping (treated the same as liquid runoff)
+      if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofb' , rc=rc)) then
+        if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofb' , rc=rc)) then
+          if (trim(rof2ocn_liq_rmap) == 'unset') then
+            call addmap_from(comprof, 'Forr_rofb', compocn, mapconsd, 'one', 'unset')
+          else
+            call addmap_from(comprof, 'Forr_rofb', compocn, map_rof2ocn_liq, 'none', rof2ocn_liq_rmap)
+          end if
+        end if
+      end if
+
+      ! Ice shelf basal melt - merging
+      if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofb' , rc=rc)) then
+        call addmrg_to(compocn, 'Foxx_rofb', mrg_from=comprof, mrg_fld='Forr_rofb', mrg_type='copy')
       end if
 
       ! Frozen runoff from land and glc - mapping

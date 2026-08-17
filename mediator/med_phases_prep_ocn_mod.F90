@@ -647,8 +647,8 @@ contains
        end if
 
        ! Scale rain and snow to ocn from atm by the precipitation factor received from the ocean
-       allocate(fldnames(4))
-       fldnames = (/'Faxa_rain', 'Faxa_snow', 'Foxx_rofl', 'Foxx_rofi'/)
+       allocate(fldnames(5))
+       fldnames = (/'Faxa_rain', 'Faxa_snow', 'Foxx_rofl', 'Foxx_rofb', 'Foxx_rofi'/)
        do n = 1,size(fldnames)
           if (FB_fldchk(is_local%wrap%FBExp(compocn), trim(fldnames(n)), rc=rc)) then
              call FB_GetFldPtr(is_local%wrap%FBExp(compocn), trim(fldnames(n)) , dataptr, rc=rc)

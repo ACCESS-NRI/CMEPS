@@ -54,7 +54,7 @@ contains
   type(InternalState) :: is_local
   type(ESMF_VM) :: vm
   integer             :: i, comm
-  real(r8), pointer   :: evap(:), evap_si(:), rofl(:), rofi(:)
+  real(r8), pointer   :: evap(:), evap_si(:), rofl(:), rofi(:), rofb(:)
   real(r8), allocatable :: ocn_precip_sum(:), ocn_sum_weighted(:,:) ! local ocean sums
   real(r8), allocatable :: ice_precip_sum(:), ice_sum_weighted(:,:) ! local ice sums
   real(r8)            :: ocn_global_sum(2), ice_global_sum(2)       ! global ocean, ice sums
@@ -64,6 +64,7 @@ contains
   real(r8), pointer   :: ifrac(:)  ! ice fraction in ocean grid cell
   real(r8), pointer   :: ofrac(:)  ! non-ice fraction in ocean grid cell
   logical             :: first_call = .true. , sum_precip = .true.
+  logical             :: rofb_present = .false. ! If true, Forr_rofb is connected and should be included in the freshwater sum
   integer, parameter  :: ip=1, ifw=2 ! index for precip, freshwater
   integer, parameter  :: dbug_threshold = 20 ! threshold for writing debug information in this subroutine
   real(r8), parameter :: eps = 10.0_r8 * tiny(0.0_r8) ! threshold for zero
@@ -120,6 +121,10 @@ contains
         line=__LINE__, file=u_FILE_u, rc=rc)
       return
     endif
+
+    ! Forr_rofb is optional
+    rofb_present = fldchk(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofb', rc=rc)
+
     first_call = .false.
   endif
 
@@ -164,7 +169,13 @@ contains
   call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofi' , rofi, rc=rc)
   if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
-  ocn_sum_weighted(:,ifw) = ocn_sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
+  if (rofb_present) then
+    call FB_GetFldPtr(is_local%wrap%FBImp(comprof,compocn), 'Forr_rofb' , rofb, rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    ocn_sum_weighted(:,ifw) = ocn_sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofb + rofi)
+  else
+    ocn_sum_weighted(:,ifw) = ocn_sum_weighted(:,ip)+ocn_areas*(ofrac*evap + rofl + rofi)
+  end if
 
   ! Sum runoff and total freshwater flux globally
   call shr_reprosum_calc(ocn_sum_weighted, ocn_global_sum, size(ofrac), size(ofrac), 2, &
@@ -224,7 +235,11 @@ contains
     call scalefreshwater_get_precip(sum_precip, is_local%wrap%FBImp(compatm,compocn), ocn_precip_sum, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     do i = 1, size(ofrac)
-      local_sum(1) = local_sum(1) + ocn_areas(i)*(ofrac(i)*(ocn_precip_sum(i) + evap(i)) + rofl(i) + rofi(i))
+      if (rofb_present) then
+        local_sum(1) = local_sum(1) + ocn_areas(i)*(ofrac(i)*(ocn_precip_sum(i) + evap(i)) + rofl(i) + rofb(i) + rofi(i))
+      else
+        local_sum(1) = local_sum(1) + ocn_areas(i)*(ofrac(i)*(ocn_precip_sum(i) + evap(i)) + rofl(i) + rofi(i))
+      end if
     end do
 
     if (is_local%wrap%comp_present(compice)) then
