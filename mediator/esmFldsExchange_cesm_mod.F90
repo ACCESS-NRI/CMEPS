@@ -2190,7 +2190,8 @@ contains
       end if
 
       ! Ice shelf basal melt - merging
-      if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofb' , rc=rc)) then
+      if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofb' , rc=rc) .and. &
+           fldchk(is_local%wrap%FBImp(comprof, compocn), 'Forr_rofb' , rc=rc)) then
         call addmrg_to(compocn, 'Foxx_rofb', mrg_from=comprof, mrg_fld='Forr_rofb', mrg_type='copy')
       end if
 
