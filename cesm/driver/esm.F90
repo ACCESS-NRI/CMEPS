@@ -1121,19 +1121,19 @@ contains
           found_comp = .true.
        end if
 #endif
-#ifdef WAV_PRESENT
-       if (trim(compLabels(i)) .eq. 'WAV') then
-#ifdef ESMF_AWARE_THREADING
-          call NUOPC_DriverAddComp(driver, trim(compLabels(i)), WAVSetServices, WAVSetVM, &
-               PetList=petlist, comp=child, info=info, rc=rc)
-#else
-          call NUOPC_DriverAddComp(driver, trim(compLabels(i)), WAVSetServices,  &
-               PetList=petlist, comp=child, rc=rc)
-#endif
-          if (chkerr(rc,__LINE__,u_FILE_u)) return
-          found_comp = .true.
-       end if
-#endif
+! #ifdef WAV_PRESENT
+!        if (trim(compLabels(i)) .eq. 'WAV') then
+! #ifdef ESMF_AWARE_THREADING
+!           call NUOPC_DriverAddComp(driver, trim(compLabels(i)), WAVSetServices, WAVSetVM, &
+!                PetList=petlist, comp=child, info=info, rc=rc)
+! #else
+!           call NUOPC_DriverAddComp(driver, trim(compLabels(i)), WAVSetServices,  &
+!                PetList=petlist, comp=child, rc=rc)
+! #endif
+!           if (chkerr(rc,__LINE__,u_FILE_u)) return
+!           found_comp = .true.
+!        end if
+! #endif
 #ifdef ESP_PRESENT
        if (trim(compLabels(i)) .eq. 'ESP') then
           call NUOPC_DriverAddComp(driver, trim(compLabels(i)), ESPSetServices, PetList=petlist, comp=child, rc=rc)
