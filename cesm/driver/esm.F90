@@ -841,12 +841,12 @@ contains
     use ocn_comp_nuopc        , only : OCNSetVM => SetVM
 #endif
 #endif
-#ifdef WAV_PRESENT
-    use wav_comp_nuopc        , only : WAVSetServices => SetServices
-#ifdef ESMF_AWARE_THREADING
-    use wav_comp_nuopc        , only : WAVSetVM => SetVM
-#endif
-#endif
+! #ifdef WAV_PRESENT
+!     use wav_comp_nuopc        , only : WAVSetServices => SetServices
+! #ifdef ESMF_AWARE_THREADING
+!     use wav_comp_nuopc        , only : WAVSetVM => SetVM
+! #endif
+! #endif
 #ifdef ROF_PRESENT
     use rof_comp_nuopc        , only : ROFSetServices => SetServices
 #ifdef ESMF_AWARE_THREADING
