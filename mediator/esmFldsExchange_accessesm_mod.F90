@@ -383,7 +383,7 @@ module esmFldsExchange_accessesm_mod
              fldchk(is_local%wrap%FBImp(compatm, compatm), trim(fldname), rc=rc) &
             ) then
 
-            call addmap_from(compatm, trim(fldname), compocn, mapbilnr, 'one', 'unset')
+            call addmap_from(compatm, trim(fldname), compocn, mappatch, 'one', 'unset')
             call addmrg_to(compocn, trim(fldname), mrg_from=compatm, mrg_fld=trim(fldname), mrg_type='copy')
 
          end if
