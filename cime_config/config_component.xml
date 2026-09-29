@@ -1439,6 +1439,14 @@
     <desc>rof2ocn runoff mapping file</desc>
   </entry>
 
+  <entry id="ROF2OCN_SUB_RMAPNAME">
+    <type>char</type>
+    <default_value>idmap</default_value>
+    <group>run_domain</group>
+    <file>env_run.xml</file>
+    <desc>rof2ocn runoff mapping file</desc>
+  </entry>
+
   <entry id="OCN2WAV_SMAPNAME">
     <type>char</type>
     <default_value>idmap</default_value>

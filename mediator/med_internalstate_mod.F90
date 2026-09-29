@@ -78,7 +78,8 @@ module med_internalstate_mod
   integer , public, parameter :: mapbilnr_nstod    = 16 ! bilinear with nstod extrapolation
   integer , public, parameter :: mapconsf_aofrac   = 17 ! conservative with aofrac normalization (ufs only)
   integer , public, parameter :: mapconsf_uv3d     = 18 ! conservative with uv3d mapping
-  integer , public, parameter :: nmappers          = 18
+  integer , public, parameter :: map_rof2ocn_sub   = 19 ! custom smoothing map to map submarine melt from rof->ocn (cesm only)
+  integer , public, parameter :: nmappers          = 19
   character(len=*) , public, parameter :: mapnames(nmappers) = &
        (/'bilnr       ',&
          'consf       ',&
@@ -97,7 +98,8 @@ module med_internalstate_mod
          'fillv_bilnr ',&
          'bilnr_nstod ',&
          'consf_aofrac',&
-         'consf_uv3d  '/)
+         'consf_uv3d  ',&
+         'rof2ocn_sub '/)
 
   type, public :: packed_data_type
      integer, allocatable :: fldindex(:) ! size of number of packed fields

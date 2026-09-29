@@ -996,9 +996,9 @@
        canonical_units: kg m-2 s-1
        description: med export to ocn - water flux due to runoff (liquid)
      #
-     - standard_name: Foxx_rofb
+     - standard_name: Foxx_rofs
        canonical_units: kg m-2 s-1
-       description: med export to ocn - water flux due to runoff (ice shelf basal melt)
+       description: med export to ocn - water flux due to runoff (submarine melt)
      #
      - standard_name: Foxx_swnet
        alias: mean_net_sw_flx
@@ -1088,9 +1088,9 @@
        canonical_units: kg m-2 s-1
        description: river import to med - water flux due to runoff (liquid)
      #
-     - standard_name: Forr_rofb
+     - standard_name: Forr_rofs
        canonical_units: kg m-2 s-1
-       description: river import to med - water flux due to runoff (ice shelf basal melt)
+       description: river import to med - water flux due to runoff (submarine melt)
      #
      - standard_name: Forr_rofl_glc
        canonical_units: kg m-2 s-1

@@ -48,8 +48,8 @@ Mediator Mapping file attributes
   "smoothed" land-ice -> sea-ice liquid mapping file
 **glc2ocn_liq_rmapname**, **glc2ocn_ice_rmapname**
   "smoothed" land-ice -> ocean liquid and ice mapping files
-**rof2ocn_liq_rmapname**, **rof2ocn_ice_rmapname**
-  "smoothed" river -> ocean liquid and ice mapping file
+**rof2ocn_liq_rmapname**, **rof2ocn_ice_rmapname**, **rof2ocn_sub_rmapname**
+  "smoothed" river -> ocean liquid, ice, and submarine melt mapping file
 **wav2ocn_smapname**
   wave -> ocean state mapping file
 **lnd2rof_fmapname**

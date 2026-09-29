@@ -2318,6 +2318,18 @@
       <value>$ROF2OCN_ICE_RMAPNAME</value>
     </values>
   </entry>
+  <entry id="rof2ocn_sub_rmapname"    modify_via_xml="ROF2OCN_SUB_RMAPNAME">
+    <type>char</type>
+    <category>mapping</category>
+    <input_pathname>abs</input_pathname>
+    <group>MED_attributes</group>
+    <desc>
+      runoff to ocn nearest neighbor plus smoothing conservative mapping file
+    </desc>
+    <values>
+      <value>$ROF2OCN_SUB_RMAPNAME</value>
+    </values>
+  </entry>
 
   <entry id="ocn2wav_smapname"    modify_via_xml="OCN2WAV_SMAPNAME">
     <type>char</type>

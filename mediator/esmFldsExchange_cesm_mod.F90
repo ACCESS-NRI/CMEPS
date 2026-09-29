@@ -78,6 +78,7 @@ module esmFldsExchange_cesm_mod
   ! optional mapping files
   character(len=CX)   :: wav2ocn_map ='unset'
   character(len=CX)   :: ocn2wav_map = 'unset'
+  character(len=CX)   :: rof2ocn_sub_rmap ='unset'
 
   ! no mapping files (value is 'idmap' or 'unset')
   character(len=CX)   :: atm2ice_map = 'unset'
@@ -117,7 +118,7 @@ contains
     use med_internalstate_mod , only : compice, comprof, compwav, compglc, ncomps
     use med_internalstate_mod , only : mapbilnr, mapconsf, mapconsd, mappatch, mappatch_uv3d, mapbilnr_nstod
     use med_internalstate_mod , only : mapfcopy, mapnstod, mapnstod_consd, mapnstod_consf
-    use med_internalstate_mod , only : map_rof2ocn_ice, map_rof2ocn_liq
+    use med_internalstate_mod , only : map_rof2ocn_ice, map_rof2ocn_liq, map_rof2ocn_sub
     use med_internalstate_mod, only : ocn_name, ice_name
     use esmFlds               , only : addfld_ocnalb => med_fldList_addfld_ocnalb
     use esmFlds               , only : addfld_aoflux => med_fldList_addfld_aoflux
@@ -206,6 +207,9 @@ contains
        call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_ice_rmapname', value=rof2ocn_ice_rmap,  rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        if (maintask) write(logunit, '(a)') trim(subname)//'rof2ocn_ice_rmapname = '// trim(rof2ocn_ice_rmap)
+       call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_sub_rmapname', value=rof2ocn_sub_rmap,  rc=rc)
+       if (chkerr(rc,__LINE__,u_FILE_u)) return
+       if (maintask) write(logunit, '(a)') trim(subname)//'rof2ocn_sub_rmapname = '// trim(rof2ocn_sub_rmap)
 
        call NUOPC_CompAttributeGet(gcomp, name='wav2ocn_smapname', value=wav2ocn_map,  rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
@@ -2120,12 +2124,12 @@ contains
        ! fldlistFr(comprof) in order to be mapped correctly to the ocean but the ocean
        ! does not receive it so it is advertised but it will not be connected
        call addfld_from(comprof, 'Forr_rofl')
-       call addfld_from(comprof, 'Forr_rofb')
+       call addfld_from(comprof, 'Forr_rofs')
        call addfld_from(comprof, 'Forr_rofi')
        call addfld_from(comprof, 'Forr_rofl_glc')
        call addfld_from(comprof, 'Forr_rofi_glc')
        call addfld_to(compocn, 'Foxx_rofl')
-       call addfld_to(compocn, 'Foxx_rofb')
+       call addfld_to(compocn, 'Foxx_rofs')
        call addfld_to(compocn, 'Foxx_rofi')
        call addfld_to(compocn, 'Forr_rofl_glc')
        call addfld_to(compocn, 'Forr_rofi_glc')
@@ -2178,21 +2182,21 @@ contains
         call addmrg_to(compocn, 'Foxx_rofl', mrg_from=comprof, mrg_fld=trim(mrgfld_source), mrg_type='sum')
       end if
 
-      ! Ice shelf basal melt - mapping (treated the same as liquid runoff)
-      if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofb' , rc=rc)) then
-        if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofb' , rc=rc)) then
-          if (trim(rof2ocn_liq_rmap) == 'unset') then
-            call addmap_from(comprof, 'Forr_rofb', compocn, mapconsd, 'one', 'unset')
+      ! Submarine melt - mapping
+      if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs' , rc=rc)) then
+        if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs' , rc=rc)) then
+          if (trim(rof2ocn_sub_rmap) == 'unset') then
+            call addmap_from(comprof, 'Forr_rofs', compocn, mapconsd, 'one', 'unset')
           else
-            call addmap_from(comprof, 'Forr_rofb', compocn, map_rof2ocn_liq, 'none', rof2ocn_liq_rmap)
+            call addmap_from(comprof, 'Forr_rofs', compocn, map_rof2ocn_sub, 'none', rof2ocn_sub_rmap)
           end if
         end if
       end if
 
-      ! Ice shelf basal melt - merging
-      if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofb' , rc=rc) .and. &
-           fldchk(is_local%wrap%FBImp(comprof, compocn), 'Forr_rofb' , rc=rc)) then
-        call addmrg_to(compocn, 'Foxx_rofb', mrg_from=comprof, mrg_fld='Forr_rofb', mrg_type='copy')
+      ! Submarine melt - merging
+      if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs' , rc=rc) .and. &
+           fldchk(is_local%wrap%FBImp(comprof, compocn), 'Forr_rofs' , rc=rc)) then
+        call addmrg_to(compocn, 'Foxx_rofs', mrg_from=comprof, mrg_fld='Forr_rofs', mrg_type='copy')
       end if
 
       ! Frozen runoff from land and glc - mapping
