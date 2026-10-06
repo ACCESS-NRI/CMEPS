@@ -219,6 +219,7 @@ contains
          FBrof_r, &
          is_local%wrap%FBImp(comprof,compocn), &
          comprof, compocn, rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     ! Write rof inst, avg or aux if requested in mediator attributes
     call NUOPC_MediatorGet(gcomp, driverClock=dClock, rc=rc)
