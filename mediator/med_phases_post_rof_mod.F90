@@ -762,6 +762,13 @@ contains
 
     ! unclear why this can't be in med_phases_post_rof_init, possibly pio not initialised
     if (.not. spreading_initialized) then
+        call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_ice_spread', value=rofi_spread, isPresent=isPresent, isSet=isSet, rc=rc)
+        if (isPresent .and. isSet) then
+          call shr_log_error(string=trim(subname)//"rof2ocn_ice_spread is deprecated, please use rofi_spread instead in nuopc.runconfig", &
+                  line=__LINE__,file=u_FILE_u, rc=rc)
+          return
+        end if
+
         call NUOPC_CompAttributeGet(gcomp, name='rofi_spread', value=rofi_spread, isPresent=isPresent, isSet=isSet, rc=rc)
         if (chkerr(rc,__LINE__,u_FILE_u)) return
         if (isPresent .and. isSet) then
