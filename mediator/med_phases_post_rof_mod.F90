@@ -435,7 +435,7 @@ contains
     ! input/output variables
     type(ESMF_GridComp)  :: gcomp
     character(len=*), intent(in) :: fields_to_spread_runoff(:)
-    character(len=CL) :: rofi_spread
+    character(len=CL), intent(inout) :: rofi_spread
     integer, intent(in) :: dst_comp ! the component mesh the field is being spread on
     integer, intent(out) :: rc
 
