@@ -216,7 +216,7 @@ contains
 
     call med_phases_post_rof_spread_rofi_field_bundle( &
          gcomp, fields_to_spread_runoff, &
-         is_local%wrap%FBImp(comprof,comprof), &
+         FBrof_r, &
          is_local%wrap%FBImp(comprof,compocn), &
          comprof, compocn, rc)
 
