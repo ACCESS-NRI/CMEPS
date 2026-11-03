@@ -634,7 +634,7 @@ contains
           precip_fact(1) = dataptr_scalar_ocn(scalar_id,1)
           if (precip_fact(1) /= 1._r8) then
              write(logunit,'(a,f21.13)')&
-                  '(merge_to_ocn): Scaling rain, snow, liquid and ice runoff by non-unity precip_fact ',&
+                  '(merge_to_ocn): Scaling rain, snow, liquid, submarine melt and ice runoff by non-unity precip_fact ',&
                   precip_fact(1)
           end if
        end if

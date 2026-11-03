@@ -147,6 +147,8 @@ contains
     logical             :: ocn2glc_coupling
     logical             :: forr_rofl_glc_merged_to_ocn
     logical             :: forr_rofi_glc_merged_to_ocn
+    logical             :: isPresent, isSet
+    character(len=CX)   :: mapfile
     character(len=*) , parameter   :: subname=' (esmFldsExchange_cesm) '
     !--------------------------------------
 
@@ -207,8 +209,11 @@ contains
        call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_ice_rmapname', value=rof2ocn_ice_rmap,  rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
        if (maintask) write(logunit, '(a)') trim(subname)//'rof2ocn_ice_rmapname = '// trim(rof2ocn_ice_rmap)
-       call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_sub_rmapname', value=rof2ocn_sub_rmap,  rc=rc)
+       ! rof2ocn_sub_rmapname is optional; if it is not set, submarine melt uses mapconsd
+       call NUOPC_CompAttributeGet(gcomp, name='rof2ocn_sub_rmapname', value=mapfile, &
+            isPresent=isPresent, isSet=isSet, rc=rc)
        if (chkerr(rc,__LINE__,u_FILE_u)) return
+       if (isPresent .and. isSet) rof2ocn_sub_rmap = trim(mapfile)
        if (maintask) write(logunit, '(a)') trim(subname)//'rof2ocn_sub_rmapname = '// trim(rof2ocn_sub_rmap)
 
        call NUOPC_CompAttributeGet(gcomp, name='wav2ocn_smapname', value=wav2ocn_map,  rc=rc)
@@ -2180,6 +2185,19 @@ contains
           mrgfld_source = trim(mrgfld_source) //':Forr_rofl_glc'
         end if
         call addmrg_to(compocn, 'Foxx_rofl', mrg_from=comprof, mrg_fld=trim(mrgfld_source), mrg_type='sum')
+      end if
+
+      ! Submarine melt - check that it is received by the ocean. Forr_rofs is runoff that has
+      ! been removed from Forr_rofl/Forr_rofi, so it would otherwise be silently lost.
+      if (is_local%wrap%comp_present(compocn)) then
+        if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs', rc=rc) .and. &
+            .not. fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs', rc=rc)) then
+          call ESMF_LogSetError(ESMF_FAILURE, &
+               msg=trim(subname)//": ERROR Forr_rofs (submarine melt) is provided by rof but "// &
+               "Foxx_rofs is not received by the ocean", &
+               line=__LINE__, file=u_FILE_u, rcToReturn=rc)
+          return
+        end if
       end if
 
       ! Submarine melt - mapping
