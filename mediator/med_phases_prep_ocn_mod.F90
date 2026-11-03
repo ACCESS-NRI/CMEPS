@@ -634,7 +634,7 @@ contains
           precip_fact(1) = dataptr_scalar_ocn(scalar_id,1)
           if (precip_fact(1) /= 1._r8) then
              write(logunit,'(a,f21.13)')&
-                  '(merge_to_ocn): Scaling rain, snow, liquid and ice runoff by non-unity precip_fact ',&
+                  '(merge_to_ocn): Scaling rain, snow, liquid, submarine melt and ice runoff by non-unity precip_fact ',&
                   precip_fact(1)
           end if
        end if
@@ -647,8 +647,8 @@ contains
        end if
 
        ! Scale rain and snow to ocn from atm by the precipitation factor received from the ocean
-       allocate(fldnames(4))
-       fldnames = (/'Faxa_rain', 'Faxa_snow', 'Foxx_rofl', 'Foxx_rofi'/)
+       allocate(fldnames(5))
+       fldnames = (/'Faxa_rain', 'Faxa_snow', 'Foxx_rofl', 'Foxx_rofs', 'Foxx_rofi'/)
        do n = 1,size(fldnames)
           if (FB_fldchk(is_local%wrap%FBExp(compocn), trim(fldnames(n)), rc=rc)) then
              call FB_GetFldPtr(is_local%wrap%FBExp(compocn), trim(fldnames(n)) , dataptr, rc=rc)
