@@ -97,6 +97,7 @@ module esmFldsExchange_cesm_mod
   logical             :: flds_co2b                      ! Pass CO2 from ATM to LND and back from LND to ATM
   logical             :: flds_co2c                      ! Pass CO2 from ATM to surface (OCN/LND) and back from them to ATM
   logical             :: flds_r2l_stream_channel_depths ! Pass channel depths from ROF to LND
+  logical             :: flds_rofs                      ! Pass submarine melt from ROF to OCN
   logical             :: add_gusts                      ! Whether to include fields related to the gustiness parameterization
 
   character(*), parameter :: u_FILE_u = &
@@ -249,6 +250,13 @@ contains
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        read(cvalue,*) flds_r2l_stream_channel_depths
 
+       ! is submarine melt passed from rof to ocn? (optional, default false)
+       flds_rofs = .false.
+       call NUOPC_CompAttributeGet(gcomp, name='flds_rofs', value=cvalue, &
+            isPresent=isPresent, isSet=isSet, rc=rc)
+       if (ChkErr(rc,__LINE__,u_FILE_u)) return
+       if (isPresent .and. isSet) read(cvalue,*) flds_rofs
+
        ! are fields related to the gustiness parameterization enabled?
        call NUOPC_CompAttributeGet(gcomp, name='add_gusts', value=cvalue, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
@@ -267,6 +275,7 @@ contains
           write(logunit,'(a,l7)') trim(subname)//' flds_co2c                       = ',flds_co2c
           write(logunit,'(a,l7)') trim(subname)//' flds_i2o_per_cat                = ',flds_i2o_per_cat
           write(logunit,'(a,l7)') trim(subname)//' flds_r2l_stream_channel_depths  = ',flds_r2l_stream_channel_depths
+          write(logunit,'(a,l7)') trim(subname)//' flds_rofs                       = ',flds_rofs
           write(logunit,'(a,l7)') trim(subname)//' add_gusts                       = ', add_gusts
           write(logunit,'(a,l7)') trim(subname)//' mapuv_with_cart3d               = ',mapuv_with_cart3d
        end if
@@ -2129,12 +2138,10 @@ contains
        ! fldlistFr(comprof) in order to be mapped correctly to the ocean but the ocean
        ! does not receive it so it is advertised but it will not be connected
        call addfld_from(comprof, 'Forr_rofl')
-       call addfld_from(comprof, 'Forr_rofs')
        call addfld_from(comprof, 'Forr_rofi')
        call addfld_from(comprof, 'Forr_rofl_glc')
        call addfld_from(comprof, 'Forr_rofi_glc')
        call addfld_to(compocn, 'Foxx_rofl')
-       call addfld_to(compocn, 'Foxx_rofs')
        call addfld_to(compocn, 'Foxx_rofi')
        call addfld_to(compocn, 'Forr_rofl_glc')
        call addfld_to(compocn, 'Forr_rofi_glc')
@@ -2187,36 +2194,6 @@ contains
         call addmrg_to(compocn, 'Foxx_rofl', mrg_from=comprof, mrg_fld=trim(mrgfld_source), mrg_type='sum')
       end if
 
-      ! Submarine melt - check that it is received by the ocean. Forr_rofs is runoff that has
-      ! been removed from Forr_rofl/Forr_rofi, so it would otherwise be silently lost.
-      if (is_local%wrap%comp_present(compocn)) then
-        if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs', rc=rc) .and. &
-            .not. fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs', rc=rc)) then
-          call ESMF_LogSetError(ESMF_FAILURE, &
-               msg=trim(subname)//": ERROR Forr_rofs (submarine melt) is provided by rof but "// &
-               "Foxx_rofs is not received by the ocean", &
-               line=__LINE__, file=u_FILE_u, rcToReturn=rc)
-          return
-        end if
-      end if
-
-      ! Submarine melt - mapping
-      if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs' , rc=rc)) then
-        if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs' , rc=rc)) then
-          if (trim(rof2ocn_sub_rmap) == 'unset') then
-            call addmap_from(comprof, 'Forr_rofs', compocn, mapconsd, 'one', 'unset')
-          else
-            call addmap_from(comprof, 'Forr_rofs', compocn, map_rof2ocn_sub, 'none', rof2ocn_sub_rmap)
-          end if
-        end if
-      end if
-
-      ! Submarine melt - merging
-      if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs' , rc=rc) .and. &
-           fldchk(is_local%wrap%FBImp(comprof, compocn), 'Forr_rofs' , rc=rc)) then
-        call addmrg_to(compocn, 'Foxx_rofs', mrg_from=comprof, mrg_fld='Forr_rofs', mrg_type='copy')
-      end if
-
       ! Frozen runoff from land and glc - mapping
       if (fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofi' , rc=rc)) then
         if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofi' , rc=rc)) then
@@ -2255,6 +2232,39 @@ contains
         end if
         call addmrg_to(compocn, 'Foxx_rofi', mrg_from=comprof, mrg_fld=trim(mrgfld_source), mrg_type='sum')
       end if
+    end if
+
+    !-----------------------------
+    ! to ocn: submarine melt from rof
+    !-----------------------------
+    if (flds_rofs) then
+       if (phase == 'advertise') then
+          call addfld_from(comprof, 'Forr_rofs')
+          call addfld_to(compocn, 'Foxx_rofs')
+       else
+          ! Forr_rofs is part of the freshwater runoff from rof, so don't silently drop it if
+          ! the ocean does not receive it
+          if (is_local%wrap%comp_present(compocn)) then
+             if ( fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs', rc=rc) .and. &
+                  .not. fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs', rc=rc)) then
+                call ESMF_LogSetError(ESMF_FAILURE, &
+                     msg=trim(subname)//": ERROR Forr_rofs (submarine melt) is provided by rof but "// &
+                     "Foxx_rofs is not received by the ocean", &
+                     line=__LINE__, file=u_FILE_u, rcToReturn=rc)
+                return
+             end if
+          end if
+
+          if ( fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs', rc=rc) .and. &
+               fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs', rc=rc)) then
+             if (trim(rof2ocn_sub_rmap) == 'unset') then
+                call addmap_from(comprof, 'Forr_rofs', compocn, mapconsd, 'one', 'unset')
+             else
+                call addmap_from(comprof, 'Forr_rofs', compocn, map_rof2ocn_sub, 'none', rof2ocn_sub_rmap)
+             end if
+             call addmrg_to(compocn, 'Foxx_rofs', mrg_from=comprof, mrg_fld='Forr_rofs', mrg_type='copy')
+          end if
+       end if
     end if
 
     !-----------------------------
