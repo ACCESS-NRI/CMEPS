@@ -113,6 +113,7 @@ contains
     use NUOPC
     use med_kind_mod          , only : CX=>SHR_KIND_CX, CS=>SHR_KIND_CS, CL=>SHR_KIND_CL, R8=>SHR_KIND_R8
     use med_utils_mod         , only : chkerr => med_utils_chkerr
+    use shr_log_mod           , only : shr_log_error
     use med_methods_mod       , only : fldchk => med_methods_FB_FldChk
     use med_internalstate_mod , only : InternalState, logunit, maintask
     use med_internalstate_mod , only : compmed, compatm, complnd, compocn
@@ -256,6 +257,10 @@ contains
             isPresent=isPresent, isSet=isSet, rc=rc)
        if (ChkErr(rc,__LINE__,u_FILE_u)) return
        if (isPresent .and. isSet) read(cvalue,*) flds_rofs
+       if (maintask .and. trim(rof2ocn_sub_rmap) /= 'unset' .and. .not. flds_rofs) then
+          write(logunit, '(a)') trim(subname)//' WARNING: rof2ocn_sub_rmapname is set but '// &
+               'flds_rofs is false - rof2ocn_sub_rmapname will be ignored'
+       end if
 
        ! are fields related to the gustiness parameterization enabled?
        call NUOPC_CompAttributeGet(gcomp, name='add_gusts', value=cvalue, rc=rc)
@@ -2247,10 +2252,8 @@ contains
           if (is_local%wrap%comp_present(compocn)) then
              if ( fldchk(is_local%wrap%FBImp(comprof, comprof), 'Forr_rofs', rc=rc) .and. &
                   .not. fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs', rc=rc)) then
-                call ESMF_LogSetError(ESMF_FAILURE, &
-                     msg=trim(subname)//": ERROR Forr_rofs (submarine melt) is provided by rof but "// &
-                     "Foxx_rofs is not received by the ocean", &
-                     line=__LINE__, file=u_FILE_u, rcToReturn=rc)
+                call shr_log_error(trim(subname)//" ERROR: Forr_rofs (submarine melt) is provided by rof but "// &
+                     "Foxx_rofs is not received by the ocean", line=__LINE__, file=u_FILE_u, rc=rc)
                 return
              end if
           end if

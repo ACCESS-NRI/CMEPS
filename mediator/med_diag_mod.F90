@@ -938,7 +938,7 @@ contains
     call diag_rof(is_local%wrap%FBImp(comprof,comprof), 'Forr_rofi' , f_watr_ioff, ic, areas, budget_local, minus=.true., rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if ( fldbun_fldchk(is_local%wrap%FBImp(comprof,comprof), 'Forr_rofs', rc=rc)) then
-      call diag_rof(is_local%wrap%FBImp(comprof,comprof), 'Forr_rofs', f_watr_roff, ic, areas, budget_local, minus=.true., rc=rc)
+      call diag_rof(is_local%wrap%FBImp(comprof,comprof), 'Forr_rofs', f_watr_ioff, ic, areas, budget_local, minus=.true., rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
@@ -1242,7 +1242,7 @@ contains
     call diag_ocn(is_local%wrap%FBExp(compocn), 'Foxx_rofi' , f_watr_ioff   , ic, areas, sfrac, budget_local, rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     if ( fldbun_fldchk(is_local%wrap%FBExp(compocn), 'Foxx_rofs' , rc=rc)) then
-      call diag_ocn(is_local%wrap%FBExp(compocn), 'Foxx_rofs', f_watr_roff, ic, areas, sfrac, budget_local, rc=rc)
+      call diag_ocn(is_local%wrap%FBExp(compocn), 'Foxx_rofs', f_watr_ioff, ic, areas, sfrac, budget_local, rc=rc)
       if (ChkErr(rc,__LINE__,u_FILE_u)) return
     end if
 
